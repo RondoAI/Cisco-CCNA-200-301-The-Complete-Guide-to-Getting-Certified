@@ -40,7 +40,15 @@ The branch grew into early build work on the project itself:
   (who funds an official, how it traces to a foreign government, and which votes
   it correlates with — sourced, nonpartisan, never causal). Public power only,
   provenance mandatory, charter-guarded in code. Endpoints under `/api/record/...`
-  (`scorecard`, `funding`). Full suite: **23 tests passing**.
+  (`scorecard`, `funding`). Full suite: **27 tests passing**.
+- **Real U.S. roster** — `glasshouse/glasshouse/congress.py`: every current
+  Senator and Representative (all states), party, district, term end and
+  next-election year, from the keyless `unitedstates/congress-legislators`
+  dataset. `GLASSHOUSE_LIVE=1` pulls the live **~535-member** roster (verified:
+  536 members, 56 states/territories, 436 House / 100 Senate). New endpoints
+  `/api/record/summary` (whole-country layout) and `/api/record/officials`
+  (filter by `state` / `chamber` / `party` / `next_election`). Votes, statements
+  and funding for real members layer on next via keyed Congress.gov / FEC.
 - **`glasshouse/docs/FOUNDATION.md`** — the build foundation you asked about:
   open-database catalog, the agentic ingestion swarm, the incentive-mechanism
   design + guardrails (open decision O7), satellite/CV OSINT scope, the own-maps

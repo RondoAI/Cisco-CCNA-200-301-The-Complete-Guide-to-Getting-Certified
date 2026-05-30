@@ -44,8 +44,9 @@ built first and most carefully:
 
 ```bash
 pip install -r requirements.txt
-python run.py        # dashboard + API at http://127.0.0.1:8000
-pytest -q            # 19 tests: verification, privacy, learning, enrichment, the record
+python run.py                    # dashboard + API at http://127.0.0.1:8000
+GLASSHOUSE_LIVE=1 python run.py  # also pulls the real ~535-member U.S. roster
+pytest -q                        # 27 tests: verification, privacy, learning, enrichment, the record
 ```
 
 - `glasshouse/models.py` — events, not people; provenance baked in
@@ -54,8 +55,14 @@ pytest -q            # 19 tests: verification, privacy, learning, enrichment, th
 - `glasshouse/learning.py` — Bayesian source-reputation feedback loop
 - `glasshouse/enrich.py` — geocode / classify / dedupe pipeline
 - `glasshouse/record.py` — **THE RECORD (Pillar 1):** officials, bills, votes,
-  promises, and the sourced promise→vote→outcome edge (`/api/record/...`).
+  promises, the sourced promise→vote→outcome edge, and the money layer
+  (`Donor`/`FundingFlow`, FARA foreign-principal tracing) (`/api/record/...`).
   Public power only; provenance mandatory; charter-guarded in code.
+- `glasshouse/congress.py` — **the real U.S. roster:** every current Senator and
+  Representative (all states), party, district, term end and next-election year,
+  from the keyless `unitedstates/congress-legislators` dataset.
+  `/api/record/summary` lays out the whole country; `/api/record/officials?state=CA`
+  filters it. (Live with `GLASSHOUSE_LIVE=1`; offline sample otherwise.)
 - `web/index.html` — the world-intelligence console (map + signals feed + the receipt + timeline)
 - `web/engine-dashboard.html` — the engine's API-connected view
 

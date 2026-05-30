@@ -116,18 +116,34 @@ class Official:
     name: str                         # public officeholder name (public record)
     office: str                       # e.g. "U.S. Senator", "Mayor"
     body: str                         # e.g. "U.S. Senate", "City Council"
-    jurisdiction: str                 # e.g. "Texas", "Springfield"
+    jurisdiction: str                 # postal/region code, e.g. "TX", "CA"
     level: Level = Level.FEDERAL
     party: str = ""
+    district: Optional[str] = None    # House district, when applicable
+    term_end: Optional[datetime] = None
+    next_election: Optional[int] = None   # year the seat is next contested
     qid: Optional[str] = None         # Wikidata QID — the cross-language spine
+    bioguide: Optional[str] = None    # official Congress Bioguide ID
     source: Optional[Source] = None   # where this role record comes from
     id: str = field(default_factory=lambda: _id("off"))
+
+    @property
+    def chamber(self) -> str:
+        if "Senate" in self.body:
+            return "sen"
+        if "House" in self.body:
+            return "rep"
+        return ""
 
     def to_public_dict(self) -> dict:
         return {
             "id": self.id, "name": self.name, "office": self.office,
             "body": self.body, "jurisdiction": self.jurisdiction,
-            "level": self.level.value, "party": self.party, "qid": self.qid,
+            "chamber": self.chamber, "level": self.level.value,
+            "party": self.party, "district": self.district,
+            "term_end": self.term_end.isoformat() if self.term_end else None,
+            "next_election": self.next_election, "qid": self.qid,
+            "bioguide": self.bioguide,
         }
 
 
@@ -342,6 +358,45 @@ class RecordStore:
         if not sources:
             raise ProvenanceError(
                 f"{what} admitted with no source — provenance is mandatory")
+
+    def query_officials(self, state: Optional[str] = None,
+                        chamber: Optional[str] = None,
+                        party: Optional[str] = None,
+                        next_election: Optional[int] = None) -> list[Official]:
+        out = list(self.officials.values())
+        if state:
+            out = [o for o in out if o.jurisdiction.upper() == state.upper()]
+        if chamber:
+            out = [o for o in out if o.chamber == chamber]
+        if party:
+            out = [o for o in out if o.party.lower() == party.lower()]
+        if next_election is not None:
+            out = [o for o in out if o.next_election == next_election]
+        return sorted(out, key=lambda o: (o.jurisdiction, o.chamber, o.name))
+
+    def national_summary(self) -> dict:
+        """The whole-country layout: totals by chamber, party and state, plus
+        who is up for election in each upcoming cycle."""
+        offs = list(self.officials.values())
+        by_chamber: dict[str, int] = {}
+        by_party: dict[str, int] = {}
+        by_state: dict[str, int] = {}
+        up_for_election: dict[str, int] = {}
+        for o in offs:
+            by_chamber[o.chamber or "other"] = by_chamber.get(o.chamber or "other", 0) + 1
+            by_party[o.party or "Unknown"] = by_party.get(o.party or "Unknown", 0) + 1
+            by_state[o.jurisdiction] = by_state.get(o.jurisdiction, 0) + 1
+            if o.next_election:
+                k = str(o.next_election)
+                up_for_election[k] = up_for_election.get(k, 0) + 1
+        return {
+            "total_officials": len(offs),
+            "by_chamber": dict(sorted(by_chamber.items())),
+            "by_party": dict(sorted(by_party.items(), key=lambda x: -x[1])),
+            "states_covered": len(by_state),
+            "by_state": dict(sorted(by_state.items())),
+            "up_for_election": dict(sorted(up_for_election.items())),
+        }
 
     def votes_for(self, official_id: str) -> list[Vote]:
         return [v for v in self.votes.values() if v.official_id == official_id]

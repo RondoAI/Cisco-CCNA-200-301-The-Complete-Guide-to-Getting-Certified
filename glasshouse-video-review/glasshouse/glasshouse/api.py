@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
 
+from .congress import CongressAdapter
 from .ingest import CitizenMediaAdapter, GDELTAdapter
 from .record import RecordStore
 from .record_seed import seed_record
@@ -27,7 +28,14 @@ def bootstrap() -> None:
         store.ingest(ev)
     for ev in seed_events():
         store.ingest(ev)
-    seed_record(record)   # THE RECORD — notional officials/promises/votes
+    # THE RECORD: one fully-worked NOTIONAL official (promises/votes/funding to
+    # demonstrate the accountability views), plus the real U.S. roster — every
+    # current Senator and Representative (live with GLASSHOUSE_LIVE=1, else a
+    # small offline sample). Votes/statements/funding for real members layer on
+    # via the keyed Congress.gov / FEC adapters next.
+    seed_record(record)
+    for official in CongressAdapter().fetch():
+        record.add_official(official)
 
 
 app = FastAPI(title="Glasshouse", version="0.1.0",
@@ -75,10 +83,21 @@ def ingest_citizen(payload: dict):
 
 
 # --- THE RECORD (Pillar 1) — public accountability, read-only ----------------
+@app.get("/api/record/summary")
+def record_summary():
+    """The whole-country layout: totals by chamber, party and state, and who is
+    up for election in each upcoming cycle."""
+    return record.national_summary()
+
+
 @app.get("/api/record/officials")
-def list_officials():
-    return {"count": len(record.officials),
-            "officials": [o.to_public_dict() for o in record.officials.values()]}
+def list_officials(state: str | None = None, chamber: str | None = None,
+                   party: str | None = None, next_election: int | None = None):
+    """Filterable roster. e.g. ?state=CA  ?chamber=sen  ?next_election=2026"""
+    offs = record.query_officials(state=state, chamber=chamber, party=party,
+                                  next_election=next_election)
+    return {"count": len(offs),
+            "officials": [o.to_public_dict() for o in offs]}
 
 
 @app.get("/api/record/officials/{official_id}/votes")

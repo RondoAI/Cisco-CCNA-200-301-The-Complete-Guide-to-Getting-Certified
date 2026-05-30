@@ -4,6 +4,7 @@ receipts, and the charter gates (public power only, provenance mandatory)."""
 
 import pytest
 
+from glasshouse.congress import CongressAdapter
 from glasshouse.models import Source, SourceKind
 from glasshouse.record import (Bill, Donor, DonorType, Fulfillment,
                                FundingFlow, Official, Promise, ProvenanceError,
@@ -104,6 +105,59 @@ def test_funding_correlates_to_votes_only_via_shared_subjects():
     vet_flow = next(f for f in ctx["flows"]
                     if f["donor"] and "Veterans" in f["donor"]["name"])
     assert vet_flow["correlated_votes"]
+
+
+# --- Congress roster adapter (real-data shape, injected so no network) --------
+_FIXTURE = [
+    {"name": {"official_full": "Jane Senator"},
+     "id": {"bioguide": "S000001", "wikidata": "Q1"},
+     "terms": [{"type": "sen", "state": "CA", "party": "Democrat",
+                "start": "2023-01-03", "end": "2029-01-03"}]},
+    {"name": {"official_full": "John Rep"},
+     "id": {"bioguide": "R000001"},
+     "terms": [{"type": "rep", "state": "TX", "party": "Republican",
+                "district": 21, "start": "2025-01-03", "end": "2027-01-03"}]},
+]
+
+
+def test_congress_adapter_maps_real_shape():
+    offs = CongressAdapter(records=_FIXTURE).fetch()
+    sen = next(o for o in offs if o.chamber == "sen")
+    rep = next(o for o in offs if o.chamber == "rep")
+    assert sen.office == "U.S. Senator" and sen.jurisdiction == "CA"
+    assert sen.next_election == 2028          # term ends 2029 -> contested 2028
+    assert sen.qid == "Q1" and sen.source.domain == "unitedstates.github.io"
+    assert rep.district == "21" and rep.next_election == 2026
+
+
+def test_national_summary_lays_out_the_country():
+    store = RecordStore()
+    for o in CongressAdapter(records=_FIXTURE).fetch():
+        store.add_official(o)
+    s = store.national_summary()
+    assert s["total_officials"] == 2
+    assert s["by_chamber"] == {"rep": 1, "sen": 1}
+    assert s["states_covered"] == 2
+    assert s["up_for_election"] == {"2026": 1, "2028": 1}
+
+
+def test_query_officials_filters_by_state_and_chamber():
+    store = RecordStore()
+    for o in CongressAdapter(records=_FIXTURE).fetch():
+        store.add_official(o)
+    assert len(store.query_officials(state="CA")) == 1
+    assert len(store.query_officials(chamber="rep")) == 1
+    assert store.query_officials(state="CA", chamber="sen")[0].name == "Jane Senator"
+
+
+def test_roster_officials_have_no_promises_without_data():
+    # Adding the roster must not invent votes/promises — those need real sources.
+    store = RecordStore()
+    for o in CongressAdapter(records=_FIXTURE).fetch():
+        store.add_official(o)
+    oid = next(iter(store.officials))
+    assert store.promises_for(oid) == []
+    assert store.votes_for(oid) == []
 
 
 def test_promises_are_statements_but_typed():
