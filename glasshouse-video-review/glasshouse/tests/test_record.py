@@ -166,3 +166,25 @@ def test_promises_are_statements_but_typed():
     store.add_statement(Promise(official_id=o.id, text="I will do X",
                                 type=StatementType.SPEECH, sources=[_src()]))
     assert len(store.promises_for(o.id)) == 1
+
+
+def test_public_figure_statement_keeps_original_translation_and_source():
+    """A public figure's public words are archived verbatim + translated +
+    sourced — a primary-source perspective, not surveillance (D7)."""
+    store = seed_record(RecordStore())
+    leader = next(o for o in store.officials.values() if o.country == "XX")
+    stmts = store.statements_for(leader.id)
+    assert stmts, "the global-voice statement should be present"
+    s = stmts[0].to_public_dict()
+    assert s["lang"] == "ar" and s["translation"] and s["context"]
+    assert s["sources"], "every archived statement carries its source"
+
+
+def test_official_can_be_a_foreign_public_leader():
+    # The model is country-agnostic: a foreign public official is still an Official.
+    store = seed_record(RecordStore())
+    leader = next(o for o in store.officials.values() if o.country == "XX")
+    assert leader.level.value == "national"
+    assert leader.to_public_dict()["country"] == "XX"
+    # and the charter guard still holds with the extended schema
+    assert_charter_safe()

@@ -107,15 +107,15 @@ person entity, any "execute" affordance.
 
 ## 5. Proposed next steps (folded into the planning docs)
 
-See the new entries in `DECISIONS.md` (proposed D7–D9) and `ARCHITECTURE.md §8`:
+See the new entries in `DECISIONS.md` (proposed D8–D10) and `ARCHITECTURE.md §8`:
 
-- **D7** — adopt the "verification instruments" pattern as a first-class dossier
+- **D8** — adopt the "verification instruments" pattern as a first-class dossier
   element across both web surfaces.
-- **D8** — make the accountability-review action a real **human-in-the-loop
+- **D9** — make the accountability-review action a real **human-in-the-loop
   queue** wired to `learning.py` (this is also the recommended resolution to open
   question **O2**), so a reviewer's Confirm/Dispute updates source reputation
   through the existing Bayesian loop — interpretably (D5).
-- **D9** — pursue the AIP-style agent layer only in its allowed form: grounded,
+- **D10** — pursue the AIP-style agent layer only in its allowed form: grounded,
   cite-backed RAG over the record (`ARCHITECTURE.md §4`); never persuasion or
   autonomous action.
 - Open question **O3** (visual identity): the two surfaces we have — the dark

@@ -14,8 +14,9 @@ from datetime import datetime, timedelta, timezone
 
 from .models import Source, SourceKind
 from .record import (Bill, BillStatus, Donor, DonorType, Fulfillment,
-                     FundingFlow, Official, Promise, RecordStore, Statement,
-                     StatementType, Vote, VotePosition, assess_promise)
+                     FundingFlow, Level, Official, Promise, RecordStore,
+                     Statement, StatementType, Vote, VotePosition,
+                     assess_promise)
 
 NOW = datetime.now(timezone.utc)
 
@@ -138,5 +139,32 @@ def seed_record(store: RecordStore) -> RecordStore:
                       url="https://www.fec.gov/notional-contrib-2"),
                  _src(SourceKind.OFFICIAL, "efile.fara.gov", 160,
                       url="https://efile.fara.gov/notional-flow-2")]))
+
+    # --- Global voices (NOTIONAL): a public figure's own public words ----------
+    # A foreign public official, with a public social-media statement archived in
+    # the original language + a faithful translation + sourced context. This is a
+    # PRIMARY-SOURCE perspective to set beside Western press — not surveillance,
+    # not psychoanalysis (DECISIONS D7). Public figure, public statement only.
+    leader = store.add_official(Official(
+        name="Spokesperson, Notional National Council (NOTIONAL)",
+        office="Official Spokesperson", body="Notional National Council",
+        jurisdiction="XX", country="XX", level=Level.NATIONAL,
+        source=_src(SourceKind.OFFICIAL, "wikidata.org", 90,
+                    url="https://www.wikidata.org/wiki/Q000001")))
+
+    store.add_statement(Statement(
+        official_id=leader.id, type=StatementType.SOCIAL, topic="ceasefire",
+        lang="ar",
+        text="<original-language public post, archived verbatim>",
+        translation="We will observe the ceasefire if shelling of the southern "
+                    "districts stops by dawn. (faithful translation)",
+        context="Posted to the figure's verified public account; offered here as "
+                "a primary-source perspective alongside wire reporting, for the "
+                "reader to weigh. Translation reviewed; correction policy applies.",
+        when=NOW - timedelta(days=1),
+        sources=[_src(SourceKind.CITIZEN, "x.com", 1,
+                      url="https://x.com/notional-public-figure/status/1"),
+                 _src(SourceKind.WIRE, "reuters.com", 1,
+                      url="https://reuters.com/notional-corroboration")]))
 
     return store

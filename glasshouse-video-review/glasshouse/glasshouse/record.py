@@ -56,6 +56,8 @@ class Level(str, Enum):
     FEDERAL = "federal"
     STATE = "state"
     LOCAL = "local"
+    NATIONAL = "national"            # a non-US national government / leadership
+    INTERNATIONAL = "international"   # IGOs and cross-border bodies
 
 
 class VotePosition(str, Enum):
@@ -116,8 +118,9 @@ class Official:
     name: str                         # public officeholder name (public record)
     office: str                       # e.g. "U.S. Senator", "Mayor"
     body: str                         # e.g. "U.S. Senate", "City Council"
-    jurisdiction: str                 # postal/region code, e.g. "TX", "CA"
+    jurisdiction: str                 # postal/region code, e.g. "TX", "CA", "LB"
     level: Level = Level.FEDERAL
+    country: str = "US"               # ISO country — the global spine, not US-only
     party: str = ""
     district: Optional[str] = None    # House district, when applicable
     term_end: Optional[datetime] = None
@@ -139,7 +142,8 @@ class Official:
         return {
             "id": self.id, "name": self.name, "office": self.office,
             "body": self.body, "jurisdiction": self.jurisdiction,
-            "chamber": self.chamber, "level": self.level.value,
+            "country": self.country, "chamber": self.chamber,
+            "level": self.level.value,
             "party": self.party, "district": self.district,
             "term_end": self.term_end.isoformat() if self.term_end else None,
             "next_election": self.next_election, "qid": self.qid,
@@ -181,18 +185,29 @@ class Vote:
 
 @dataclass
 class Statement:
-    """Something an official said, on the record."""
+    """Something a public figure said, on the record.
+
+    A public leader's own *public* words (a speech, an interview, or a `social`
+    post) are a PRIMARY SOURCE — a direct, often non-Western perspective to set
+    beside the press, sourced, so the reader can judge. `lang`/`translation`/
+    `context` carry the original language plus a faithful translation and the
+    framing a reader needs. We archive what was said in public; we never infer
+    private psychology or model the person (CHARTER gate #2, DECISIONS D7)."""
     official_id: str
     text: str
     type: StatementType = StatementType.PRESS
     topic: str = ""
+    lang: str = "en"                       # ISO language of `text`
+    translation: Optional[str] = None      # faithful English translation, if any
+    context: Optional[str] = None          # sourced framing, never editorializing
     when: datetime = field(default_factory=_now)
     sources: list[Source] = field(default_factory=list)
     id: str = field(default_factory=lambda: _id("stmt"))
 
     def to_public_dict(self) -> dict:
         return {"id": self.id, "official_id": self.official_id, "text": self.text,
-                "type": self.type.value, "topic": self.topic,
+                "type": self.type.value, "topic": self.topic, "lang": self.lang,
+                "translation": self.translation, "context": self.context,
                 "when": self.when.isoformat(), "sources": _src_dicts(self.sources)}
 
 

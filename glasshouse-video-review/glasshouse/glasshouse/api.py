@@ -107,6 +107,19 @@ def official_votes(official_id: str):
     return {"votes": [v.to_public_dict() for v in record.votes_for(official_id)]}
 
 
+@app.get("/api/record/officials/{official_id}/statements")
+def official_statements(official_id: str):
+    """What this public figure said, on the record — speeches, interviews and
+    public social posts, with original language, translation and sourced context.
+    A primary-source, multi-perspective view; never surveillance (DECISIONS D7)."""
+    if official_id not in record.officials:
+        raise HTTPException(404, "official not found")
+    stmts = sorted(record.statements_for(official_id),
+                   key=lambda s: s.when, reverse=True)
+    return {"count": len(stmts),
+            "statements": [s.to_public_dict() for s in stmts]}
+
+
 @app.get("/api/record/officials/{official_id}/scorecard")
 def official_scorecard(official_id: str):
     """Said vs. did: each promise next to the recorded action and verdict,

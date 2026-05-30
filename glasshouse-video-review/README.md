@@ -22,7 +22,7 @@ capability — only legibility, verification, and accountability).
    confidence-tier filter legend, working `⌘K` search, verification "instrument"
    gauges, and a charter-safe accountability-review action row.
 3. **Roadmap/feature proposals** — folded into
-   [`glasshouse/DECISIONS.md`](glasshouse/DECISIONS.md) (proposed D7–D9, and a
+   [`glasshouse/DECISIONS.md`](glasshouse/DECISIONS.md) (proposed D8–D10, and a
    recommended answer to open question O2/O3) and
    [`glasshouse/ARCHITECTURE.md`](glasshouse/ARCHITECTURE.md) (new §8).
 
@@ -40,7 +40,14 @@ The branch grew into early build work on the project itself:
   (who funds an official, how it traces to a foreign government, and which votes
   it correlates with — sourced, nonpartisan, never causal). Public power only,
   provenance mandatory, charter-guarded in code. Endpoints under `/api/record/...`
-  (`scorecard`, `funding`). Full suite: **27 tests passing**.
+  (`scorecard`, `funding`, `statements`). Full suite: **29 tests passing**.
+- **Global voices (public figures, public words)** — `Statement` now carries
+  original-language text + faithful **translation** + sourced **context**, and
+  `Official` is country-agnostic (`country` + `Level.NATIONAL`/`INTERNATIONAL`),
+  so a foreign leader's public post can be archived as a sourced primary-source
+  perspective beside the press. `/api/record/officials/{id}/statements`. Scope is
+  pinned in `DECISIONS.md` **D7**: public figures + public statements only —
+  archive/translate, never surveil or psychoanalyze.
 - **Real U.S. roster** — `glasshouse/glasshouse/congress.py`: every current
   Senator and Representative (all states), party, district, term end and
   next-election year, from the keyless `unitedstates/congress-legislators`

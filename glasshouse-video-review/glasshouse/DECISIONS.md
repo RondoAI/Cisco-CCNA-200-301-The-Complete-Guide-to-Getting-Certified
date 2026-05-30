@@ -39,6 +39,23 @@ only trustworthy if it's still a receipt.
 not 25 shallow feeds. *Why:* aggregator dashboards already relay feeds cheaply; our
 edge is depth and trust.
 
+**D7 — Public figures' public statements are in scope; surveillance is not.** A
+public figure's own *public* words — a head of state, parliamentarian, party/
+faction leader, government spokesperson, or official institution, including
+verified public social-media posts — are a **primary source** we archive,
+translate and contextualize, and set beside the press so the reader weighs a
+genuinely global range of perspectives (gate 4). This sharpens, never weakens,
+the gates and is bounded hard: **(a)** public figures only — never private
+citizens; **(b)** only what they said *in public* — no private/DM/hacked content;
+**(c)** we archive and translate, we **never** infer private psychology or model
+a person to predict or change behavior (gate 2); **(d)** a curated set of
+public-figure accounts, not a platform firehose; **(e)** public figures need no
+source protection, but citizen media is still stripped at intake (gate 5). *Why:*
+hearing leaders in Iran, Lebanon or anywhere in their own words is informing, not
+spying — and it is the antidote to a single-narrative view. (Implemented:
+`Statement` with original-language + translation + context; foreign `Official`s
+via `country`/`Level.NATIONAL`.)
+
 ---
 
 ## Open (resolve before building further)
@@ -94,14 +111,14 @@ AIPCon/Paragon material as *interface* references. Recorded here as proposals so
 they get the same deliberate treatment as everything else; promote to **Settled**
 only on a real decision.
 
-**D7 (proposed) — Verification instruments are a first-class dossier element.**
+**D8 (proposed) — Verification instruments are a first-class dossier element.**
 Render the confidence score and its audit decomposition as a glanceable gauge
 cluster (score / distinct sources / checks-passed) on every event, on both web
 surfaces. *Why:* it borrows Gotham's instrument-cluster legibility while keeping
 the needles pointed at *how we know*, not at sensors. Prototyped in
 `web/index.html`. Honours D3/D5 — the gauge always decomposes back to the receipt.
 
-**D8 (proposed, and a recommended answer to O2) — The accountability-review
+**D9 (proposed, and a recommended answer to O2) — The accountability-review
 action becomes a real human-in-the-loop queue.** The dossier's Confirm / Needs
 corroboration / Dispute controls (the charter-safe analog of Gotham's
 Approve/Reject/Comment) should write through to `learning.py`, so a reviewer's
@@ -109,7 +126,7 @@ verdict updates source reputation via the existing Bayesian loop. *Why:* it give
 us the "humans in the loop until automated anchors earn their reputation" answer
 O2 was looking for — interpretably (D5), and never as an operational action (D2).
 
-**D9 (proposed) — Pursue the AIP-style agent layer only in its allowed form.**
+**D10 (proposed) — Pursue the AIP-style agent layer only in its allowed form.**
 "Actionable intelligence from every interaction" (Paragon/Healthpeak) maps to
 *grounded, cite-backed RAG over the public record* (ARCHITECTURE.md §4) — never
 persuasion, microtargeting, or any autonomous action on the world. *Why:* Gate 3
