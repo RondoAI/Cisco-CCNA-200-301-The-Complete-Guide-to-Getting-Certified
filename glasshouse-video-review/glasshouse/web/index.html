@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Glasshouse — World Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --bg:#0a0d11; --bg-2:#10151b; --panel:#0e1318; --line:#1d2630;
+    --ink:#e7edf3; --ink-dim:#7d8a99; --ink-faint:#4d5866;
+    --amber:#e8a13a;
+    --confirmed:#4ea674; --corroborated:#e8a13a; --emerging:#5b8bb0;
+    --unverified:#6b7785; --disputed:#d9534f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg); color:var(--ink);
+    font-family:"Hanken Grotesk",system-ui,sans-serif; overflow:hidden;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:46px 46px; background-position:center; background-blend-mode:overlay;}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+    background:radial-gradient(120% 80% at 50% 0%,transparent 55%,rgba(0,0,0,.55) 100%)}
+
+  .topbar{position:fixed;top:0;left:0;right:0;height:54px;z-index:40;
+    display:flex;align-items:center;gap:18px;padding:0 18px;
+    background:linear-gradient(180deg,#0d1217,#0a0d11);border-bottom:1px solid var(--line)}
+  .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;
+    letter-spacing:-.4px;display:flex;align-items:center;gap:9px}
+  .brand .orb{width:13px;height:13px;border-radius:50%;
+    background:radial-gradient(circle at 32% 30%,#fff,var(--amber) 55%,#7a4d0e);
+    box-shadow:0 0 14px rgba(232,161,58,.6)}
+  .brand b{color:var(--amber)}
+  .notional{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:1.5px;
+    color:#0a0d11;background:var(--amber);padding:3px 9px;border-radius:2px;font-weight:700}
+  .search{margin-left:auto;width:300px;max-width:34vw;background:var(--bg-2);
+    border:1px solid var(--line);border-radius:4px;padding:7px 11px;color:var(--ink);
+    font-family:"Space Mono",monospace;font-size:12px}
+  .search::placeholder{color:var(--ink-faint)}
+  .clock{font-family:"Space Mono",monospace;font-size:12px;color:var(--ink-dim);
+    border:1px solid var(--line);padding:6px 10px;border-radius:4px}
+
+  .stage{position:fixed;top:54px;left:0;right:0;bottom:0;display:grid;
+    grid-template-columns:340px 1fr;grid-template-rows:1fr 132px}
+  .feed{grid-row:1 / span 2;border-right:1px solid var(--line);background:var(--panel);
+    overflow-y:auto;position:relative;z-index:30}
+  .mapwrap{position:relative;overflow:hidden}
+  #map{position:absolute;inset:0;background:#070a0d}
+  .timeline{grid-column:2;border-top:1px solid var(--line);background:var(--panel);
+    position:relative;z-index:30;padding:12px 16px 6px}
+
+  .feed-head{display:flex;align-items:center;justify-content:space-between;
+    padding:13px 15px 9px;border-bottom:1px solid var(--line);position:sticky;top:0;
+    background:var(--panel);z-index:2}
+  .feed-head h2{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--ink-dim)}
+  .feed-head .live{font-family:"Space Mono",monospace;font-size:10px;color:var(--confirmed);
+    display:flex;align-items:center;gap:6px}
+  .feed-head .live i{width:7px;height:7px;border-radius:50%;background:var(--confirmed);
+    animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .card{padding:12px 15px;border-bottom:1px solid var(--line);cursor:pointer;
+    position:relative;opacity:0;animation:slidein .45s ease forwards;transition:background .14s}
+  .card:hover{background:var(--bg-2)} .card.sel{background:var(--bg-2)}
+  .card.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber)}
+  @keyframes slidein{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+  .card .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .sev{width:8px;height:8px;border-radius:50%;flex:none}
+  .card .hl{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:15px;
+    line-height:1.22;margin-bottom:8px}
+  .meta{display:flex;align-items:center;gap:9px;font-family:"Space Mono",monospace;
+    font-size:10.5px;color:var(--ink-dim);flex-wrap:wrap}
+  .chip{font-family:"Space Mono",monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.6px;padding:2px 7px;border-radius:2px;color:#0a0d11}
+  .reg{margin-left:auto;color:var(--ink-faint)}
+
+  .pin{border-radius:50%;border:2px solid #0a0d11;cursor:pointer;
+    box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 12px rgba(0,0,0,.6)}
+  .pin.ring{animation:ring 2.4s infinite}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(217,83,79,.5)}70%{box-shadow:0 0 0 14px rgba(217,83,79,0)}100%{box-shadow:0 0 0 0 rgba(217,83,79,0)}}
+  .leaflet-container{background:#070a0d;font-family:"Space Mono",monospace}
+  .leaflet-control-attribution{display:none}
+
+  .dossier{position:absolute;top:14px;right:14px;width:380px;max-width:90%;
+    max-height:calc(100% - 28px);background:rgba(13,18,24,.94);backdrop-filter:blur(8px);
+    border:1px solid var(--line);border-radius:6px;overflow-y:auto;z-index:35;
+    transform:translateX(112%);transition:transform .34s cubic-bezier(.2,.7,.2,1);
+    box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .dossier.open{transform:none}
+  .dossier .x{position:absolute;top:11px;right:13px;background:none;border:none;
+    color:var(--ink-dim);font-size:20px;cursor:pointer;line-height:1}
+  .dbody{padding:20px}
+  .kick{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--amber)}
+  .dbody h3{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:21px;
+    line-height:1.12;margin:7px 0 14px}
+  .stat{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);
+    font-family:"Space Mono",monospace;font-size:12px}
+  .stat span{color:var(--ink-dim)} .stat b{font-weight:700}
+  .sec{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--ink-dim);margin:20px 0 9px}
+  .src{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);
+    font-family:"Space Mono",monospace;font-size:11.5px}
+  .src .k{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:#0a0d11;
+    background:var(--ink-dim);padding:2px 6px;border-radius:2px;font-weight:700}
+  .src a{color:var(--emerging);text-decoration:none}
+  .audit{font-family:"Space Mono",monospace;font-size:11.5px;line-height:1.5;
+    border-left:2px solid var(--line);padding:5px 0 5px 11px;margin-bottom:7px}
+  .audit .ok{color:var(--confirmed)} .audit .no{color:var(--disputed)} .audit .d{color:var(--ink-dim)}
+  .refcard{border:1px solid var(--line);border-radius:5px;padding:13px;background:var(--bg-2)}
+  .refcard .t{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:14px;margin-bottom:6px}
+  .refcard .row{font-family:"Space Mono",monospace;font-size:11.5px;color:var(--ink-dim);
+    display:flex;justify-content:space-between;padding:3px 0}
+  .refcard .row b{color:var(--ink)}
+  .note{font-family:"Hanken Grotesk";font-size:11.5px;color:var(--ink-dim);
+    border-top:1px solid var(--line);margin-top:18px;padding-top:13px;line-height:1.5}
+
+  .tl-head{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--ink-dim);margin-bottom:9px}
+  .tl-track{position:relative;height:58px}
+  .tl-axis{position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line)}
+  .tl-ev{position:absolute;bottom:6px;width:11px;height:11px;border-radius:50%;
+    border:2px solid #0a0d11;cursor:pointer;transition:transform .15s}
+  .tl-ev:hover{transform:scale(1.5)}
+  .tl-tick{position:absolute;bottom:-16px;font-family:"Space Mono",monospace;font-size:9px;
+    color:var(--ink-faint);transform:translateX(-50%)}
+
+  /* --- Gotham-inspired, charter-compliant additions (see DESIGN-REVIEW.md) --- */
+  /* Glanceable status strip: counts by confidence — the "overview" read */
+  .counts{display:flex;gap:13px;padding:9px 15px;border-bottom:1px solid var(--line);
+    font-family:"Space Mono",monospace;font-size:10px;color:var(--ink-dim)}
+  .counts b{color:var(--ink);font-weight:700}
+  /* Confidence legend doubles as a live filter (click to toggle a tier) */
+  .legend{display:flex;gap:9px;flex-wrap:wrap;padding:9px 15px;border-bottom:1px solid var(--line)}
+  .legend .lg{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;
+    font-family:"Space Mono",monospace;font-size:9px;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--ink-dim)}
+  .legend .lg i{width:9px;height:9px;border-radius:50%}
+  .legend .lg.off{opacity:.3;text-decoration:line-through}
+  .no-results{padding:22px 15px;font-family:"Space Mono",monospace;font-size:11px;color:var(--ink-faint)}
+  /* Verification "instruments" — the audit math made glanceable (not sensors) */
+  .gauges{display:flex;gap:8px;margin:2px 0 4px}
+  .gauge{flex:1;border:1px solid var(--line);border-radius:5px;padding:9px 10px;background:var(--bg-2)}
+  .gauge .gv{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;line-height:1}
+  .gauge .gl{font-family:"Space Mono",monospace;font-size:8px;letter-spacing:.7px;
+    text-transform:uppercase;color:var(--ink-faint);margin-top:5px}
+  .bar{height:4px;border-radius:2px;background:var(--line);margin-top:7px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:2px}
+  /* Accountability-review actions — the charter-safe analog of Gotham's
+     Approve/Reject/Comment. These flag the RECORD for review; they are never
+     operational actions, and every click is written to the audit trail. */
+  .review{display:flex;gap:7px;margin-top:6px}
+  .review button{flex:1;font-family:"Space Mono",monospace;font-size:9.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.5px;padding:8px 5px;border-radius:4px;cursor:pointer;
+    background:var(--bg-2);color:var(--ink-dim);border:1px solid var(--line);transition:.14s}
+  .review button:hover{color:var(--ink);border-color:var(--ink-faint)}
+  .review button.confirm:hover{border-color:var(--confirmed);color:var(--confirmed)}
+  .review button.corrob:hover{border-color:var(--corroborated);color:var(--corroborated)}
+  .review button.dispute:hover{border-color:var(--disputed);color:var(--disputed)}
+  .review-note{font-family:"Space Mono",monospace;font-size:9px;color:var(--ink-faint);
+    margin-top:7px;line-height:1.45}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="orb"></span>Glass<b>house</b></div>
+    <span class="notional">SAMPLE · NOTIONAL DATA</span>
+    <input class="search" id="search" placeholder="filter signals…  ⌘K" />
+    <div class="clock" id="clock">--:--:-- UTC</div>
+  </div>
+  <div class="stage">
+    <aside class="feed">
+      <div class="feed-head"><h2>Signals</h2><span class="live"><i></i>LIVE FEED</span></div>
+      <div class="counts" id="counts"></div>
+      <div class="legend" id="legend"></div>
+      <div id="cards"></div>
+    </aside>
+    <div class="mapwrap">
+      <div id="map"></div>
+      <section class="dossier" id="dossier">
+        <button class="x" onclick="closeDossier()">&times;</button>
+        <div class="dbody" id="dbody"></div>
+      </section>
+    </div>
+    <div class="timeline">
+      <div class="tl-head">Last 24h — click an event</div>
+      <div class="tl-track" id="tl"></div>
+    </div>
+  </div>
+<script>
+/* SAMPLE / NOTIONAL events — clearly labelled as not-live so we never present
+   unverified claims as fact (the product's whole point). In production this is
+   replaced by fetch('/api/events'). Each event mirrors the verification engine:
+   sources + audit trail (the receipt) + optional sourced reference card.
+   Reference cards IDENTIFY and CITE only — never targeting. */
+const CONF={confirmed:'#4ea674',corroborated:'#e8a13a',emerging:'#5b8bb0',unverified:'#6b7785',disputed:'#d9534f'};
+const SEV={critical:'#d9534f',high:'#e8893a',medium:'#cfb23a',low:'#5b8bb0'};
+const H=(n)=>new Date(Date.now()-n*3600e3);
+const EVENTS=[
+  {id:'e1',headline:'Reported closure of shipping lane, Strait of Hormuz',lat:26.57,lon:56.25,
+   region:'Strait of Hormuz',t:H(2),confidence:'corroborated',score:0.61,severity:'critical',
+   tags:['maritime','interdiction'],
+   sources:[{kind:'wire',domain:'reuters.com',url:'#'},{kind:'ngo',domain:'acleddata.com',url:'#'},{kind:'aggregator',domain:'gdelt',url:'#'}],
+   audit:[{check:'independent_clusters',ok:true,d:'3 independent voices'},{check:'reputation:reuters.com',ok:true,d:'learned trust 0.88 (n=120)'},{check:'recency_consistency',ok:true,d:'sources within 90 min'}],
+   ref:{t:'Open-source platform ID',rows:[['Reported as','fast attack craft'],['Role','coastal patrol / interdiction'],['Identification','open-source, unconfirmed'],['Specs','see public references']]}},
+  {id:'e2',headline:'Airstrike reported on market district, El Fasher',lat:13.63,lon:25.35,
+   region:'Sudan',t:H(5),confidence:'confirmed',score:0.82,severity:'critical',tags:['armed_conflict'],
+   sources:[{kind:'wire',domain:'reuters.com',url:'#'},{kind:'ngo',domain:'acleddata.com',url:'#'},{kind:'outlet',domain:'aljazeera.com',url:'#'}],
+   audit:[{check:'independent_clusters',ok:true,d:'3 independent voices'},{check:'reputation_weight',ok:true,d:'best-source trust 0.88'},{check:'recycled_media',ok:true,d:'no reused footage'}]},
+  {id:'e3',headline:'Large protest reported near Azadi Tower, Tehran',lat:35.70,lon:51.34,
+   region:'Iran',t:H(8),confidence:'emerging',score:0.34,severity:'high',tags:['protest'],
+   sources:[{kind:'citizen',domain:'telegram',url:'#'}],
+   audit:[{check:'independent_clusters',ok:false,d:'1 voice — needs corroboration'},{check:'reputation:telegram',ok:false,d:'learned trust 0.41 (n=33)'}],
+   note:'Single citizen source. Filmer identity stripped at intake — not stored.'},
+  {id:'e4',headline:'"Breaking" naval clip circulating — flagged recycled',lat:33.32,lon:44.37,
+   region:'Iraq',t:H(3),confidence:'disputed',score:0.0,severity:'medium',tags:['disinfo'],
+   sources:[{kind:'citizen',domain:'x.com',url:'#'},{kind:'aggregator',domain:'viralfeed',url:'#'}],
+   audit:[{check:'recycled_media',ok:false,d:'media hash matches an event from 2021'},{check:'verdict',ok:false,d:'DISPUTED — corroboration cannot override reuse'}]},
+  {id:'e5',headline:'Cargo congestion building at port, Bab-el-Mandeb',lat:12.58,lon:43.33,
+   region:'Red Sea',t:H(11),confidence:'corroborated',score:0.57,severity:'high',tags:['maritime','trade'],
+   sources:[{kind:'aggregator',domain:'aisstream.io',url:'#'},{kind:'outlet',domain:'lloydslist.com',url:'#'}],
+   audit:[{check:'independent_clusters',ok:true,d:'2 independent voices'},{check:'recency_consistency',ok:true,d:'AIS + reporting aligned'}]},
+];
+const map=L.map('map',{zoomControl:true,attributionControl:false,worldCopyJump:true}).setView([22,42],4);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:18,opacity:.55}).addTo(map);
+let selected=null; const markers={};
+/* Filter state: which confidence tiers are shown + the search query. The legend
+   doubles as the filter control — Gotham's layer toggles, pointed at confidence
+   tiers (not weapon/sensor layers). See DESIGN-REVIEW.md. */
+const TIERS=['confirmed','corroborated','emerging','unverified','disputed'];
+const active=new Set(TIERS); let query='';
+function chip(c){return `<span class="chip" style="background:${CONF[c]}">${c}</span>`;}
+function visible(){
+  const q=query.trim().toLowerCase();
+  return EVENTS.filter(e=>active.has(e.confidence) &&
+    (!q || (e.headline+' '+e.region+' '+e.tags.join(' ')).toLowerCase().includes(q)));
+}
+function renderCounts(){
+  const total=EVENTS.length, disp=EVENTS.filter(e=>e.confidence==='disputed').length;
+  document.getElementById('counts').innerHTML=
+    `<span><b>${total}</b> tracked</span><span><b>${visible().length}</b> shown</span>
+     <span style="color:var(--disputed)"><b>${disp}</b> disputed</span>`;
+}
+function renderLegend(){
+  const box=document.getElementById('legend');box.innerHTML='';
+  TIERS.forEach(t=>{const el=document.createElement('span');
+    el.className='lg'+(active.has(t)?'':' off');
+    el.innerHTML=`<i style="background:${CONF[t]}"></i>${t}`;
+    el.onclick=()=>{active.has(t)?active.delete(t):active.add(t);rerender();};
+    box.appendChild(el);});
+}
+function makeMarkers(){
+  EVENTS.forEach(e=>{
+    const m=L.marker([e.lat,e.lon],{icon:L.divIcon({className:'',iconSize:[16,16],
+      html:`<div class="pin ${e.severity==='critical'?'ring':''}" style="width:15px;height:15px;background:${CONF[e.confidence]}"></div>`})})
+      .addTo(map).on('click',()=>select(e.id));
+    markers[e.id]=m;
+  });
+}
+function renderFeed(){
+  const box=document.getElementById('cards');box.innerHTML='';
+  const list=visible().sort((a,b)=>b.t-a.t);
+  // keep filtered-out events on the map but dimmed, rather than dropping them
+  EVENTS.forEach(e=>{const el=markers[e.id]&&markers[e.id].getElement();
+    if(el)el.style.opacity=list.includes(e)?'1':'.12';});
+  if(!list.length){box.innerHTML='<div class="no-results">No signals match this filter.</div>';return;}
+  list.forEach((e,i)=>{
+    const c=document.createElement('div');c.className='card'+(e.id===selected?' sel':'');c.id='c-'+e.id;
+    c.style.animationDelay=(i*70)+'ms';c.onclick=()=>select(e.id);
+    const ago=Math.round((Date.now()-e.t)/3600e3);
+    c.innerHTML=`<div class="top"><span class="sev" style="background:${SEV[e.severity]}"></span>
+      ${chip(e.confidence)}<span class="reg">${e.region}</span></div>
+      <div class="hl">${e.headline}</div>
+      <div class="meta"><span>${e.sources.length} src</span><span>·</span>
+      <span>score ${e.score.toFixed(2)}</span><span>·</span><span>${ago}h ago</span></div>`;
+    box.appendChild(c);
+  });
+}
+function rerender(){renderCounts();renderLegend();renderFeed();}
+function renderTimeline(){
+  const tl=document.getElementById('tl');tl.innerHTML='<div class="tl-axis"></div>';
+  for(let h=24;h>=0;h-=6){const x=100-(h/24*100);
+    const tk=document.createElement('div');tk.className='tl-tick';tk.style.left=x+'%';
+    tk.textContent=h===0?'now':`-${h}h`;tl.appendChild(tk);}
+  EVENTS.forEach(e=>{const h=(Date.now()-e.t)/3600e3;const x=100-(Math.min(h,24)/24*100);
+    const d=document.createElement('div');d.className='tl-ev';d.style.left=x+'%';
+    d.style.background=CONF[e.confidence];d.title=e.headline;d.onclick=()=>select(e.id);tl.appendChild(d);});
+}
+/* Verification "instruments" — the audit math made glanceable. This is the
+   Gotham instrument-cluster aesthetic pointed at how-we-know, not at sensors. */
+function gaugeRow(e){
+  const passed=e.audit.filter(a=>a.ok).length, total=e.audit.length;
+  const g=[
+    {v:e.score.toFixed(2),l:'confidence score',pct:e.score*100,col:CONF[e.confidence]},
+    {v:e.sources.length,l:'distinct sources',pct:Math.min(e.sources.length/3,1)*100,col:'var(--emerging)'},
+    {v:passed+'/'+total,l:'checks passed',pct:total?passed/total*100:0,col:'var(--confirmed)'},
+  ];
+  return `<div class="gauges">`+g.map(x=>`<div class="gauge"><div class="gv">${x.v}</div>
+    <div class="gl">${x.l}</div><div class="bar"><i style="width:${x.pct}%;background:${x.col}"></i></div>
+    </div>`).join('')+`</div>`;
+}
+/* Accountability review — the charter-safe analog of Gotham's Approve/Reject/
+   Comment. It flags the RECORD and writes to the audit trail; it is never an
+   operational action. Advances DECISIONS O2 (human-in-the-loop queue). */
+function review(id,kind){
+  const e=EVENTS.find(x=>x.id===id);if(!e)return;
+  const M={confirm:{ok:true ,d:'Reviewer confirmed — kept on corroboration watch'},
+           corrob :{ok:false,d:'Reviewer requested corroboration — queued for a 2nd independent source'},
+           dispute:{ok:false,d:'Reviewer flagged disputed — pending source re-check'}};
+  const m=M[kind];if(!m)return;
+  e.audit=e.audit.concat([{check:'analyst_review',ok:m.ok,
+    d:m.d+' · '+new Date().toISOString().substr(11,8)+'Z'}]);
+  select(id); rerender();
+}
+function select(id){
+  const e=EVENTS.find(x=>x.id===id);if(!e)return;
+  if(selected)document.getElementById('c-'+selected)?.classList.remove('sel');
+  selected=id;document.getElementById('c-'+id)?.classList.add('sel');
+  map.flyTo([e.lat,e.lon],6,{duration:.6});
+  const audit=e.audit.map(a=>`<div class="audit"><span class="${a.ok?'ok':'no'}">${a.ok?'✓':'✕'} ${a.check}</span><br><span class="d">${a.d}</span></div>`).join('');
+  const srcs=e.sources.map(s=>`<div class="src"><span class="k">${s.kind}</span><a href="${s.url}">${s.domain}</a></div>`).join('');
+  const ref=e.ref?`<div class="sec">Reference — identify &amp; cite only</div>
+     <div class="refcard"><div class="t">${e.ref.t}</div>
+     ${e.ref.rows.map(r=>`<div class="row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div>`:'';
+  const note=e.note?`<div class="note">${e.note}</div>`:'';
+  document.getElementById('dbody').innerHTML=
+    `<div class="kick">incident dossier</div><h3>${e.headline}</h3>
+     <div class="stat"><span>Confidence</span><b>${chip(e.confidence)}</b></div>
+     <div class="stat"><span>Score</span><b>${e.score.toFixed(2)}</b></div>
+     <div class="stat"><span>Region</span><b>${e.region}</b></div>
+     <div class="stat"><span>Tags</span><b>${e.tags.join(', ')}</b></div>
+     <div class="sec">Verification instruments</div>${gaugeRow(e)}
+     <div class="sec">Sources — outlets, never uploaders</div>${srcs}
+     <div class="sec">Verification audit — the receipt</div>${audit}${ref}${note}
+     <div class="sec">Accountability review</div>
+     <div class="review">
+       <button class="confirm" onclick="review('${e.id}','confirm')">Confirm</button>
+       <button class="corrob" onclick="review('${e.id}','corrob')">Needs corroboration</button>
+       <button class="dispute" onclick="review('${e.id}','dispute')">Dispute</button>
+     </div>
+     <div class="review-note">Review actions flag the <b>record</b> and append to the
+     audit trail above. They never trigger an operational action — this is the
+     human-in-the-loop queue (DECISIONS O2), not a command surface.</div>
+     <div class="note">Every claim above traces to a source and a check. Sample data
+     shown for layout; live data flows from the verification engine.</div>`;
+  document.getElementById('dossier').classList.add('open');
+}
+function closeDossier(){document.getElementById('dossier').classList.remove('open');
+  if(selected)document.getElementById('c-'+selected)?.classList.remove('sel');selected=null;}
+function tick(){const d=new Date();document.getElementById('clock').textContent=d.toISOString().substr(11,8)+' UTC';}
+const searchEl=document.getElementById('search');
+searchEl.addEventListener('input',e=>{query=e.target.value;rerender();});
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();searchEl.focus();}
+  if(e.key==='Escape'){
+    if(document.getElementById('dossier').classList.contains('open'))closeDossier();
+    else if(query){query='';searchEl.value='';rerender();}}
+});
+setInterval(tick,1000);tick();makeMarkers();rerender();renderTimeline();
+</script>
+</body>
+</html>
