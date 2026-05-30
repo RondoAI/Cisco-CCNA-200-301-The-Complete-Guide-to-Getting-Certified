@@ -29,6 +29,8 @@ for striking.
 
 ## The documents (the thinking, get these right before coding)
 
+- **[VISION.md](VISION.md)** — where this is going: the intelligence hub for the
+  public, bigger than Palantir but for the people. *Governed by the Charter.*
 - **[CHARTER.md](CHARTER.md)** — the binding ethical gates (CI-enforced).
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the spine + data model + roadmap.
 - **[DOMAINS.md](DOMAINS.md)** — the intelligence layers and their open sources.
@@ -43,7 +45,7 @@ built first and most carefully:
 ```bash
 pip install -r requirements.txt
 python run.py        # dashboard + API at http://127.0.0.1:8000
-pytest -q            # 13 tests: verification, privacy, learning, enrichment
+pytest -q            # 19 tests: verification, privacy, learning, enrichment, the record
 ```
 
 - `glasshouse/models.py` — events, not people; provenance baked in
@@ -51,6 +53,9 @@ pytest -q            # 13 tests: verification, privacy, learning, enrichment
 - `glasshouse/privacy.py` — source-protection at intake
 - `glasshouse/learning.py` — Bayesian source-reputation feedback loop
 - `glasshouse/enrich.py` — geocode / classify / dedupe pipeline
+- `glasshouse/record.py` — **THE RECORD (Pillar 1):** officials, bills, votes,
+  promises, and the sourced promise→vote→outcome edge (`/api/record/...`).
+  Public power only; provenance mandatory; charter-guarded in code.
 - `web/index.html` — the world-intelligence console (map + signals feed + the receipt + timeline)
 - `web/engine-dashboard.html` — the engine's API-connected view
 

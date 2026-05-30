@@ -1,0 +1,336 @@
+"""
+THE RECORD — Pillar 1 of Glasshouse (public accountability).
+
+The legible, sourced record of *public power*: what officials promise, what they
+vote on, and whether the two line up. The "killer feature" (ARCHITECTURE.md §2)
+is the explicit, sourced edge between a Promise and the later Vote/Bill/outcome
+that fulfilled or contradicted it — "said X, did Y, here are both receipts."
+
+Two non-negotiables carry over from the events engine, by design:
+
+PUBLIC POWER ONLY (CHARTER gate #1).
+  The only person-like entity here is `Official`, and it holds PUBLIC ROLE DATA
+  ONLY — office, party, votes, public statements. There is no field for a private
+  citizen, and none for psychology, personality, or persuasion. `assert_charter_safe()`
+  scans the schema for forbidden concepts so this is enforced in code, not a memo.
+
+PROVENANCE IS MANDATORY (CHARTER gate #4).
+  Every Vote, Statement, Promise and assessment carries its `Source`s. The store
+  refuses to admit a fact with no source. A promise-vs-action verdict ships with
+  an inspectable audit trail, and correlation is never dressed as causation.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field, fields
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Optional
+
+from .models import CheckResult, Source
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _id(prefix: str) -> str:
+    return f"{prefix}_{uuid.uuid4().hex[:12]}"
+
+
+# ---------------------------------------------------------------------------
+# Charter guard: forbidden concepts may not appear as fields anywhere in THE
+# RECORD. This mirrors the CI gate described in CHARTER.md — profiling a private
+# individual or modelling psychology is a change of mission, not a feature.
+# ---------------------------------------------------------------------------
+FORBIDDEN_FIELD_TOKENS = frozenset({
+    "psychograph", "personality", "persuasion", "persuade", "microtarget",
+    "sentiment_profile", "private_citizen", "watchlist", "private_address",
+    "home_address", "ssn", "device_id", "phone", "ip_address", "propensity",
+    "voter_score", "influence_score",
+})
+
+
+class Level(str, Enum):
+    FEDERAL = "federal"
+    STATE = "state"
+    LOCAL = "local"
+
+
+class VotePosition(str, Enum):
+    YEA = "yea"
+    NAY = "nay"
+    ABSTAIN = "abstain"
+    ABSENT = "absent"
+
+
+class StatementType(str, Enum):
+    SPEECH = "speech"
+    FLOOR = "floor"
+    INTERVIEW = "interview"
+    PRESS = "press"
+    SOCIAL = "social"
+
+
+class BillStatus(str, Enum):
+    INTRODUCED = "introduced"
+    IN_COMMITTEE = "in_committee"
+    PASSED = "passed"
+    ENACTED = "enacted"
+    FAILED = "failed"
+
+
+class Fulfillment(str, Enum):
+    """Verdict on a promise, against what the official actually did."""
+    FULFILLED = "fulfilled"
+    PARTIAL = "partial"
+    IN_PROGRESS = "in_progress"
+    CONTRADICTED = "contradicted"
+    UNRESOLVED = "unresolved"   # no recorded action yet — say so, don't guess
+
+
+@dataclass
+class Official:
+    """A public officeholder. PUBLIC ROLE DATA ONLY — a senator's name, party
+    and votes are public record. There is intentionally no private-life field."""
+    name: str                         # public officeholder name (public record)
+    office: str                       # e.g. "U.S. Senator", "Mayor"
+    body: str                         # e.g. "U.S. Senate", "City Council"
+    jurisdiction: str                 # e.g. "Texas", "Springfield"
+    level: Level = Level.FEDERAL
+    party: str = ""
+    qid: Optional[str] = None         # Wikidata QID — the cross-language spine
+    source: Optional[Source] = None   # where this role record comes from
+    id: str = field(default_factory=lambda: _id("off"))
+
+    def to_public_dict(self) -> dict:
+        return {
+            "id": self.id, "name": self.name, "office": self.office,
+            "body": self.body, "jurisdiction": self.jurisdiction,
+            "level": self.level.value, "party": self.party, "qid": self.qid,
+        }
+
+
+@dataclass
+class Bill:
+    title: str
+    summary: str = ""
+    status: BillStatus = BillStatus.INTRODUCED
+    subjects: list[str] = field(default_factory=list)
+    when: datetime = field(default_factory=_now)
+    sources: list[Source] = field(default_factory=list)
+    id: str = field(default_factory=lambda: _id("bill"))
+
+    def to_public_dict(self) -> dict:
+        return {"id": self.id, "title": self.title, "summary": self.summary,
+                "status": self.status.value, "subjects": self.subjects,
+                "when": self.when.isoformat(), "sources": _src_dicts(self.sources)}
+
+
+@dataclass
+class Vote:
+    """How an official voted on a bill — a public, recorded act."""
+    official_id: str
+    bill_id: str
+    position: VotePosition
+    when: datetime = field(default_factory=_now)
+    sources: list[Source] = field(default_factory=list)
+    id: str = field(default_factory=lambda: _id("vote"))
+
+    def to_public_dict(self) -> dict:
+        return {"id": self.id, "official_id": self.official_id,
+                "bill_id": self.bill_id, "position": self.position.value,
+                "when": self.when.isoformat(), "sources": _src_dicts(self.sources)}
+
+
+@dataclass
+class Statement:
+    """Something an official said, on the record."""
+    official_id: str
+    text: str
+    type: StatementType = StatementType.PRESS
+    topic: str = ""
+    when: datetime = field(default_factory=_now)
+    sources: list[Source] = field(default_factory=list)
+    id: str = field(default_factory=lambda: _id("stmt"))
+
+    def to_public_dict(self) -> dict:
+        return {"id": self.id, "official_id": self.official_id, "text": self.text,
+                "type": self.type.value, "topic": self.topic,
+                "when": self.when.isoformat(), "sources": _src_dicts(self.sources)}
+
+
+@dataclass
+class Promise(Statement):
+    """A stated commitment — a kind of Statement we will later check against
+    what the official actually did. This is one end of the killer edge."""
+    id: str = field(default_factory=lambda: _id("prom"))
+
+
+@dataclass
+class PromiseAssessment:
+    """The killer edge: a sourced verdict linking a Promise to the Vote(s) /
+    Bill(s) / outcome that fulfilled or contradicted it.
+
+    It carries an audit trail (the same CheckResult receipt the events engine
+    uses) so the verdict is an *explanation*, never an unsourced accusation.
+    Correlation is labelled as correlation; only the official's own recorded
+    acts justify a 'contradicted' or 'fulfilled' verdict.
+    """
+    promise_id: str
+    verdict: Fulfillment
+    rationale: str
+    action_vote_ids: list[str] = field(default_factory=list)
+    action_bill_ids: list[str] = field(default_factory=list)
+    audit: list[CheckResult] = field(default_factory=list)
+    assessed_at: datetime = field(default_factory=_now)
+    id: str = field(default_factory=lambda: _id("assess"))
+
+    def to_public_dict(self) -> dict:
+        return {
+            "id": self.id, "promise_id": self.promise_id,
+            "verdict": self.verdict.value, "rationale": self.rationale,
+            "action_vote_ids": self.action_vote_ids,
+            "action_bill_ids": self.action_bill_ids,
+            "assessed_at": self.assessed_at.isoformat(),
+            "audit_trail": [
+                {"check": c.name, "passed": c.passed, "detail": c.detail}
+                for c in self.audit
+            ],
+        }
+
+
+def _src_dicts(sources: list[Source]) -> list[dict]:
+    return [{"kind": s.kind.value, "domain": s.domain, "url": s.url,
+             "published_at": s.published_at.isoformat()} for s in sources]
+
+
+# ---------------------------------------------------------------------------
+# Assessment helper — builds the audit trail for a promise-vs-action verdict.
+# ---------------------------------------------------------------------------
+def assess_promise(promise: Promise, verdict: Fulfillment, rationale: str,
+                   votes: Optional[list[Vote]] = None,
+                   bills: Optional[list[Bill]] = None) -> PromiseAssessment:
+    votes, bills = votes or [], bills or []
+    audit = [
+        CheckResult("promise_on_record", bool(promise.sources),
+                    f"promise sourced to {len(promise.sources)} record(s)"),
+        CheckResult("action_on_record", bool(votes or bills),
+                    f"{len(votes)} recorded vote(s), {len(bills)} bill(s)"),
+        CheckResult(
+            "alignment",
+            verdict in (Fulfillment.FULFILLED, Fulfillment.PARTIAL,
+                        Fulfillment.IN_PROGRESS),
+            rationale),
+    ]
+    return PromiseAssessment(
+        promise_id=promise.id, verdict=verdict, rationale=rationale,
+        action_vote_ids=[v.id for v in votes],
+        action_bill_ids=[b.id for b in bills], audit=audit)
+
+
+# ---------------------------------------------------------------------------
+# Store — in-memory, behind a tiny interface so it can become Postgres + a graph
+# layer later (ARCHITECTURE.md §5) without touching callers.
+# ---------------------------------------------------------------------------
+class ProvenanceError(ValueError):
+    """Raised when a fact is admitted with no Source. Gate #4 in code."""
+
+
+class RecordStore:
+    def __init__(self) -> None:
+        self.officials: dict[str, Official] = {}
+        self.bills: dict[str, Bill] = {}
+        self.votes: dict[str, Vote] = {}
+        self.statements: dict[str, Statement] = {}
+        self.assessments: dict[str, PromiseAssessment] = {}
+
+    def add_official(self, o: Official) -> Official:
+        self.officials[o.id] = o
+        return o
+
+    def add_bill(self, b: Bill) -> Bill:
+        self._require_source(b.sources, "Bill")
+        self.bills[b.id] = b
+        return b
+
+    def add_vote(self, v: Vote) -> Vote:
+        self._require_source(v.sources, "Vote")
+        self.votes[v.id] = v
+        return v
+
+    def add_statement(self, s: Statement) -> Statement:
+        self._require_source(s.sources, "Statement")
+        self.statements[s.id] = s
+        return s
+
+    def add_assessment(self, a: PromiseAssessment) -> PromiseAssessment:
+        self.assessments[a.id] = a
+        return a
+
+    @staticmethod
+    def _require_source(sources: list[Source], what: str) -> None:
+        if not sources:
+            raise ProvenanceError(
+                f"{what} admitted with no source — provenance is mandatory")
+
+    def votes_for(self, official_id: str) -> list[Vote]:
+        return [v for v in self.votes.values() if v.official_id == official_id]
+
+    def statements_for(self, official_id: str) -> list[Statement]:
+        return [s for s in self.statements.values()
+                if s.official_id == official_id]
+
+    def promises_for(self, official_id: str) -> list[Promise]:
+        return [s for s in self.statements_for(official_id)
+                if isinstance(s, Promise)]
+
+    def assessment_for(self, promise_id: str) -> Optional[PromiseAssessment]:
+        for a in self.assessments.values():
+            if a.promise_id == promise_id:
+                return a
+        return None
+
+    def scorecard(self, official_id: str) -> dict:
+        """The headline view: an official's promises, each next to the recorded
+        action and verdict. 'Said X, did Y, here are both receipts.'"""
+        official = self.officials.get(official_id)
+        if not official:
+            return {}
+        promises = self.promises_for(official_id)
+        rows = []
+        tally: dict[str, int] = {}
+        for p in promises:
+            a = self.assessment_for(p.id)
+            verdict = a.verdict.value if a else Fulfillment.UNRESOLVED.value
+            tally[verdict] = tally.get(verdict, 0) + 1
+            rows.append({
+                "promise": p.to_public_dict(),
+                "assessment": a.to_public_dict() if a else None,
+                "actions": {
+                    "votes": [self.votes[i].to_public_dict()
+                              for i in (a.action_vote_ids if a else [])
+                              if i in self.votes],
+                    "bills": [self.bills[i].to_public_dict()
+                              for i in (a.action_bill_ids if a else [])
+                              if i in self.bills],
+                },
+            })
+        return {"official": official.to_public_dict(),
+                "promise_count": len(promises), "tally": tally,
+                "promises": rows}
+
+
+def assert_charter_safe() -> None:
+    """Fail loudly if any RECORD entity grows a field that profiles a private
+    individual or models psychology/persuasion. Called by the test-suite and
+    intended for CI — the charter's gate #1/#3, enforced in code."""
+    for entity in (Official, Bill, Vote, Statement, Promise, PromiseAssessment):
+        for f in fields(entity):
+            low = f.name.lower()
+            for token in FORBIDDEN_FIELD_TOKENS:
+                if token in low:
+                    raise AssertionError(
+                        f"CHARTER VIOLATION: {entity.__name__}.{f.name} "
+                        f"matches forbidden concept '{token}'")

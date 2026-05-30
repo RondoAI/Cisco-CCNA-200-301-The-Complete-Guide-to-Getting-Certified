@@ -26,6 +26,10 @@ model "how someone thinks" to move votes. We never profile the public. We never
 ask you to take our word — we show you the record and let you decide. These are
 not preferences; they are enforced gates (see `CHARTER.md`).
 
+> The full ambition — the public's intelligence hub, "data for everything,"
+> bigger than Palantir but for the people — is in **[VISION.md](VISION.md)**.
+> This document is how we build toward it; the Charter is the line we don't cross.
+
 The product's only durable moat is **trust**, and trust comes from sourcing,
 verification, and nonpartisanship — not from volume or hot takes.
 

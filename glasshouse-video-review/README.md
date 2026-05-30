@@ -26,6 +26,20 @@ capability — only legibility, verification, and accountability).
    recommended answer to open question O2/O3) and
    [`glasshouse/ARCHITECTURE.md`](glasshouse/ARCHITECTURE.md) (new §8).
 
+## Also on this branch (beyond the video review)
+
+The branch grew into early build work on the project itself:
+
+- **`glasshouse/VISION.md`** — the mission ("intelligence hub for the people,
+  bigger than Palantir but for the public, ethical, data for everything"),
+  governed by the Charter; linked from the README and `ARCHITECTURE.md §0`.
+- **THE RECORD (Pillar 1), first slice** — `glasshouse/glasshouse/record.py`
+  (+ `record_seed.py`, tests, API): officials, bills, votes, promises, and the
+  sourced **promise → vote → outcome** edge. Public power only, provenance
+  mandatory, charter-guarded in code. New endpoints under `/api/record/...`;
+  the offline scorecard returns fulfilled / contradicted / unresolved with both
+  receipts. Full suite: **19 tests passing**.
+
 ## Run the project
 
 ```bash

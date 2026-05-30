@@ -12,10 +12,13 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 
 from .ingest import CitizenMediaAdapter, GDELTAdapter
+from .record import RecordStore
+from .record_seed import seed_record
 from .seed import seed_events
 from .store import EventStore
 
 store = EventStore()
+record = RecordStore()
 
 
 def bootstrap() -> None:
@@ -24,6 +27,7 @@ def bootstrap() -> None:
         store.ingest(ev)
     for ev in seed_events():
         store.ingest(ev)
+    seed_record(record)   # THE RECORD — notional officials/promises/votes
 
 
 app = FastAPI(title="Glasshouse", version="0.1.0",
@@ -62,9 +66,33 @@ def get_event(event_id: str):
 
 
 @app.post("/api/ingest/citizen")
-def ingest_citizen(record: dict):
+def ingest_citizen(payload: dict):
     """Accept a raw citizen-media record. Identity is stripped at the adapter
     boundary before the event is ever stored or scored."""
-    events = CitizenMediaAdapter(raw_records=[record]).fetch()
+    events = CitizenMediaAdapter(raw_records=[payload]).fetch()
     stored = [store.ingest(e).to_public_dict() for e in events]
     return {"ingested": stored}
+
+
+# --- THE RECORD (Pillar 1) — public accountability, read-only ----------------
+@app.get("/api/record/officials")
+def list_officials():
+    return {"count": len(record.officials),
+            "officials": [o.to_public_dict() for o in record.officials.values()]}
+
+
+@app.get("/api/record/officials/{official_id}/votes")
+def official_votes(official_id: str):
+    if official_id not in record.officials:
+        raise HTTPException(404, "official not found")
+    return {"votes": [v.to_public_dict() for v in record.votes_for(official_id)]}
+
+
+@app.get("/api/record/officials/{official_id}/scorecard")
+def official_scorecard(official_id: str):
+    """Said vs. did: each promise next to the recorded action and verdict,
+    with both receipts. The headline accountability view."""
+    card = record.scorecard(official_id)
+    if not card:
+        raise HTTPException(404, "official not found")
+    return card
