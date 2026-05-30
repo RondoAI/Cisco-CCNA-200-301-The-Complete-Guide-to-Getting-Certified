@@ -96,3 +96,14 @@ def official_scorecard(official_id: str):
     if not card:
         raise HTTPException(404, "official not found")
     return card
+
+
+@app.get("/api/record/officials/{official_id}/funding")
+def official_funding(official_id: str):
+    """Follow the money: who funds this official, any FARA foreign principal
+    behind a donor, and which recorded votes touch the donor's interests —
+    shown as labelled correlation with receipts, never as causation."""
+    ctx = record.funding_context(official_id)
+    if not ctx:
+        raise HTTPException(404, "official not found")
+    return ctx

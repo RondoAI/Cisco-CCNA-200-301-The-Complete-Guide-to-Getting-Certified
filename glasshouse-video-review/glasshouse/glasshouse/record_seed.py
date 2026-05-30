@@ -13,9 +13,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from .models import Source, SourceKind
-from .record import (Bill, BillStatus, Fulfillment, Official, Promise,
-                     RecordStore, Statement, StatementType, Vote, VotePosition,
-                     assess_promise)
+from .record import (Bill, BillStatus, Donor, DonorType, Fulfillment,
+                     FundingFlow, Official, Promise, RecordStore, Statement,
+                     StatementType, Vote, VotePosition, assess_promise)
 
 NOW = datetime.now(timezone.utc)
 
@@ -106,5 +106,37 @@ def seed_record(store: RecordStore) -> RecordStore:
         p_cf, Fulfillment.UNRESOLVED,
         "No bill or vote on campaign-finance transparency is on the record yet "
         "this term. Stated, not yet acted on — labelled unresolved, not broken."))
+
+    # --- Follow the money (NOTIONAL, nonpartisan) -----------------------------
+    # A domestic-interest PAC and a domestic lobby that is FARA-registered for a
+    # foreign principal — both invented. The point is the *capability* (trace
+    # funder -> official -> related vote, and funder -> foreign principal), shown
+    # as labelled correlation with sources, applied the same way to everyone.
+    healthpac = store.add_donor(Donor(
+        name="Veterans Care Action Fund (NOTIONAL PAC)", type=DonorType.PAC,
+        source=_src(SourceKind.OFFICIAL, "fec.gov", 200,
+                    url="https://www.fec.gov/notional-healthpac")))
+
+    foreign_lobby = store.add_donor(Donor(
+        name="Global Strategy Group (NOTIONAL)", type=DonorType.ORGANIZATION,
+        foreign_principal="Govt. of Notiona-Overseas (FARA-registered)",
+        source=_src(SourceKind.OFFICIAL, "efile.fara.gov", 210,
+                    url="https://efile.fara.gov/notional-principal")))
+
+    store.add_funding(FundingFlow(
+        donor_id=healthpac.id, official_id=avery.id, amount_usd=45000.0,
+        cycle="2024", subjects=["veterans", "healthcare"],
+        sources=[_src(SourceKind.AGGREGATOR, "opensecrets.org", 150,
+                      url="https://www.opensecrets.org/notional-1"),
+                 _src(SourceKind.OFFICIAL, "fec.gov", 150,
+                      url="https://www.fec.gov/notional-contrib-1")]))
+
+    store.add_funding(FundingFlow(
+        donor_id=foreign_lobby.id, official_id=avery.id, amount_usd=120000.0,
+        cycle="2024", subjects=["budget", "foreign_policy"],
+        sources=[_src(SourceKind.OFFICIAL, "fec.gov", 160,
+                      url="https://www.fec.gov/notional-contrib-2"),
+                 _src(SourceKind.OFFICIAL, "efile.fara.gov", 160,
+                      url="https://efile.fara.gov/notional-flow-2")]))
 
     return store

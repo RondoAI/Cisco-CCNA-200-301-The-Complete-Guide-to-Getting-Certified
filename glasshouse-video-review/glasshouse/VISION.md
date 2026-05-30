@@ -40,6 +40,51 @@ be the best in the world at verification and legibility. One day the API itself
 is a product. The build is hard on purpose; the moat is depth and trust, not
 volume.
 
+## Better than Wikipedia, Palantir and Polymarket — at the thing each misses
+
+- **Wikipedia** has breadth and trust but no live signal, no verification engine,
+  no money-and-power graph, and flat presentation. We keep its sourcing ethic and
+  add *real-time*, *verified*, *richly visualized*, *connected* intelligence.
+- **Palantir** has the legibility and the live picture but serves institutions and
+  can target. We take the legibility, serve the public, and never target.
+- **Polymarket** proves people crave a live signal on *everything* — but it bets
+  on outcomes; it doesn't *track the record*. No one is tracking, with great
+  software and UI, a politician's **campaign-trail promises vs. what they actually
+  did** — at the presidential, governor (e.g. California), or **mayor** level. We
+  are. (Built first: `record.py`.)
+
+## The depth that is the moat
+
+- **Follow the money.** Who funds an official — AIPAC or another lobby — and how
+  those dollars trace back through FARA filings toward a foreign principal
+  (Israel, Saudi Arabia, Qatar, an oil interest, anyone), and how that correlates
+  with their votes. All public record (FEC, OpenSecrets, FARA, OpenSanctions),
+  shown as **labelled correlation with receipts, nonpartisan by standard** —
+  never a causal accusation. (Built: `FundingFlow`, `/api/record/.../funding`.)
+- **Regional & cultural context.** Not just "they're Shia" but what that *means*
+  in context — the cultural, sectarian, historical and economic frame most
+  outlets flatten. Knowledge of regions others don't have, sourced and explained.
+- **The ground truth.** Targeted, *licensed* on-the-ground footage and real-time
+  video of events as they happen — run through verification and **source
+  protection** (the filmer's identity is stripped at intake; in Iran or Sudan
+  this is life-or-death, not a setting).
+- **Everything connected.** Money ↔ votes ↔ conflict ↔ trade ↔ oil ↔ statements,
+  on one map and one timeline — so a person gets a *universal* view instead of
+  being stuck in a box because the information is scattered and shattered.
+
+## How we build it (state-of-the-art, on open foundations)
+
+We plug into every credible open database and build our **own software layer** on
+top — our own maps, our own visualization, our own verification, our own entity
+graph. We use the best open technology (open satellite imagery, computer-vision
+libraries, open geospatial stacks) rather than reinventing primitives, and spend
+our genius on the layer no one else has: **verified, connected, legible truth.**
+Agentic ingestion (multiple agents swarming open sources) and a possible
+contribution-incentive mechanism are on the table — both strictly behind the
+verification gate and the source-protection rule. The build path, data-source
+catalog, and infrastructure/storage setup are in
+**[docs/FOUNDATION.md](docs/FOUNDATION.md)**.
+
 ## What makes it different (and durable)
 
 The data sources are commodities — a competitor can copy them in a weekend. The

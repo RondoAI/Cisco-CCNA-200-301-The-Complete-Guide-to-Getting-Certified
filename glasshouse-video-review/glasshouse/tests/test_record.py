@@ -5,9 +5,10 @@ receipts, and the charter gates (public power only, provenance mandatory)."""
 import pytest
 
 from glasshouse.models import Source, SourceKind
-from glasshouse.record import (Bill, Fulfillment, Official, Promise,
-                               ProvenanceError, RecordStore, StatementType,
-                               Vote, VotePosition, assert_charter_safe)
+from glasshouse.record import (Bill, Donor, DonorType, Fulfillment,
+                               FundingFlow, Official, Promise, ProvenanceError,
+                               RecordStore, StatementType, Vote, VotePosition,
+                               assert_charter_safe)
 from glasshouse.record_seed import seed_record
 
 
@@ -65,6 +66,44 @@ def test_assessment_carries_an_inspectable_audit_trail():
     a = store.assessment_for(pid)
     names = {c["check"] for c in a.to_public_dict()["audit_trail"]}
     assert {"promise_on_record", "action_on_record", "alignment"} <= names
+
+
+def test_funding_requires_a_source():
+    store = RecordStore()
+    with pytest.raises(ProvenanceError):
+        store.add_funding(FundingFlow("d1", "o1", 1000.0, "2024"))  # no source
+
+
+def test_funding_context_labels_correlation_and_carries_receipts():
+    store = seed_record(RecordStore())
+    official_id = next(iter(store.officials))
+    ctx = store.funding_context(official_id)
+
+    # Correlation must be labelled, never dressed as causation.
+    assert ctx["relationship"] == "correlation"
+    assert "correlation" in ctx["disclaimer"].lower()
+    assert "nonpartisan" in ctx["disclaimer"].lower()
+    assert ctx["total_usd"] == 165000.0
+    # Every flow ships with its sources (FEC/OpenSecrets/FARA).
+    assert all(f["sources"] for f in ctx["flows"])
+
+
+def test_foreign_principal_is_traceable_when_on_record():
+    store = seed_record(RecordStore())
+    ctx = store.funding_context(next(iter(store.officials)))
+    foreign = [f for f in ctx["flows"]
+               if f["donor"] and f["donor"]["foreign_principal"]]
+    assert foreign, "a FARA foreign principal should be surfaced when present"
+
+
+def test_funding_correlates_to_votes_only_via_shared_subjects():
+    store = seed_record(RecordStore())
+    ctx = store.funding_context(next(iter(store.officials)))
+    # The veterans PAC shares the 'veterans' subject with the enacted vets bill,
+    # so a correlated vote should surface — clearly as correlation, not proof.
+    vet_flow = next(f for f in ctx["flows"]
+                    if f["donor"] and "Veterans" in f["donor"]["name"])
+    assert vet_flow["correlated_votes"]
 
 
 def test_promises_are_statements_but_typed():

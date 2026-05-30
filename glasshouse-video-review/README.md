@@ -33,12 +33,18 @@ The branch grew into early build work on the project itself:
 - **`glasshouse/VISION.md`** — the mission ("intelligence hub for the people,
   bigger than Palantir but for the public, ethical, data for everything"),
   governed by the Charter; linked from the README and `ARCHITECTURE.md §0`.
-- **THE RECORD (Pillar 1), first slice** — `glasshouse/glasshouse/record.py`
-  (+ `record_seed.py`, tests, API): officials, bills, votes, promises, and the
-  sourced **promise → vote → outcome** edge. Public power only, provenance
-  mandatory, charter-guarded in code. New endpoints under `/api/record/...`;
-  the offline scorecard returns fulfilled / contradicted / unresolved with both
-  receipts. Full suite: **19 tests passing**.
+- **THE RECORD (Pillar 1)** — `glasshouse/glasshouse/record.py` (+ `record_seed.py`,
+  tests, API): officials, bills, votes, promises, the sourced **promise → vote →
+  outcome** edge, **and the money layer** — `Donor` / `FundingFlow` with FARA
+  **foreign-principal** tracing and **labelled-correlation** linkage to votes
+  (who funds an official, how it traces to a foreign government, and which votes
+  it correlates with — sourced, nonpartisan, never causal). Public power only,
+  provenance mandatory, charter-guarded in code. Endpoints under `/api/record/...`
+  (`scorecard`, `funding`). Full suite: **23 tests passing**.
+- **`glasshouse/docs/FOUNDATION.md`** — the build foundation you asked about:
+  open-database catalog, the agentic ingestion swarm, the incentive-mechanism
+  design + guardrails (open decision O7), satellite/CV OSINT scope, the own-maps
+  visualization stack (O8), and the **storage / secure-cloud setup** recommendation.
 
 ## Run the project
 

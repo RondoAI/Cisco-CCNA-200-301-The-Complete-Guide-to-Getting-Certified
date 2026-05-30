@@ -63,7 +63,27 @@ copyleft). *Needs a real decision before any public release.*
 charter-veto power (per CHARTER.md). When to incorporate.
 
 **O6 — Hosting / data residency.** Where this runs, and how source-protection
-survives the infrastructure choices (subpoenas, jurisdiction).
+survives the infrastructure choices (subpoenas, jurisdiction). *See the storage
+recommendation in `docs/FOUNDATION.md` §7 — isolate citizen intake, strip before
+store, decide jurisdiction before real source data lands.*
+
+**O7 — Contribution incentive mechanism (Bittensor-style).** Whether to reward
+contributors/agents for verified data, and how. *Hard constraint:* reward must be
+**unlinkable to on-the-ground source identity** (paying a filmer can expose them —
+the privacy tests stay green), and a contribution earns only *after* it survives
+verification, never on submission. *Do not build until resolved.* See
+`docs/FOUNDATION.md` §4.
+
+**O8 — Own maps & visualization stack.** Recommendation on the table: MapLibre GL
++ self-hosted OSM vector tiles + deck.gl overlays + a force-directed money/power
+graph, replacing the seed's Leaflet/Carto placeholder. Confirm before investing.
+See `docs/FOUNDATION.md` §6.
+
+**O9 — On-the-ground & imagery scope.** OSINT analysis of *open/published*
+satellite/aerial imagery and *licensed, identity-stripped* citizen footage is in
+scope; operating our own collection (drones/sensors) or any imagery that tracks a
+private individual is **out** (CHARTER gate #1, DOMAINS hard line). Recorded so
+the line is explicit before anyone builds toward it.
 
 ---
 

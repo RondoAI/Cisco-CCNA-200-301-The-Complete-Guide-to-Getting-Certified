@@ -90,6 +90,25 @@ class Fulfillment(str, Enum):
     UNRESOLVED = "unresolved"   # no recorded action yet — say so, don't guess
 
 
+class DonorType(str, Enum):
+    """Public funding entities only. We model organizations, committees and
+    aggregate sectors — public money in public politics — not private donors'
+    personal profiles."""
+    PAC = "pac"
+    SUPER_PAC = "super_pac"
+    COMMITTEE = "committee"
+    ORGANIZATION = "organization"
+    INDUSTRY = "industry"            # aggregate sector (OpenSecrets-style rollup)
+
+
+# How funding relates to a vote is always CORRELATION, shown with its receipts,
+# never asserted as causation. This string travels with every funding context.
+FUNDING_DISCLAIMER = (
+    "Funding and votes shown together are CORRELATION from the public record, "
+    "not proof that money caused a vote. Same methodology is applied to every "
+    "donor, lobby and government — nonpartisan by standard.")
+
+
 @dataclass
 class Official:
     """A public officeholder. PUBLIC ROLE DATA ONLY — a senator's name, party
@@ -201,6 +220,44 @@ class PromiseAssessment:
         }
 
 
+@dataclass
+class Donor:
+    """A funding source — a PAC, committee, organization or aggregate sector.
+    `foreign_principal` records a FARA-registered foreign tie when one is on the
+    public record (e.g. a lobby acting for a foreign government); it lets us
+    trace money back toward its ultimate origin, sourced — never inferred."""
+    name: str
+    type: DonorType = DonorType.PAC
+    foreign_principal: Optional[str] = None   # FARA-registered principal (public record)
+    qid: Optional[str] = None
+    source: Optional[Source] = None
+    id: str = field(default_factory=lambda: _id("donor"))
+
+    def to_public_dict(self) -> dict:
+        return {"id": self.id, "name": self.name, "type": self.type.value,
+                "foreign_principal": self.foreign_principal, "qid": self.qid}
+
+
+@dataclass
+class FundingFlow:
+    """A recorded contribution: donor → official, in a cycle, sourced to FEC/
+    OpenSecrets. `subjects` are the donor's interest areas, used only to surface
+    (clearly labelled) correlation with related votes."""
+    donor_id: str
+    official_id: str
+    amount_usd: float
+    cycle: str                                # e.g. "2024"
+    subjects: list[str] = field(default_factory=list)
+    sources: list[Source] = field(default_factory=list)
+    id: str = field(default_factory=lambda: _id("flow"))
+
+    def to_public_dict(self) -> dict:
+        return {"id": self.id, "donor_id": self.donor_id,
+                "official_id": self.official_id, "amount_usd": self.amount_usd,
+                "cycle": self.cycle, "subjects": self.subjects,
+                "sources": _src_dicts(self.sources)}
+
+
 def _src_dicts(sources: list[Source]) -> list[dict]:
     return [{"kind": s.kind.value, "domain": s.domain, "url": s.url,
              "published_at": s.published_at.isoformat()} for s in sources]
@@ -245,6 +302,8 @@ class RecordStore:
         self.votes: dict[str, Vote] = {}
         self.statements: dict[str, Statement] = {}
         self.assessments: dict[str, PromiseAssessment] = {}
+        self.donors: dict[str, Donor] = {}
+        self.flows: dict[str, FundingFlow] = {}
 
     def add_official(self, o: Official) -> Official:
         self.officials[o.id] = o
@@ -269,6 +328,15 @@ class RecordStore:
         self.assessments[a.id] = a
         return a
 
+    def add_donor(self, d: Donor) -> Donor:
+        self.donors[d.id] = d
+        return d
+
+    def add_funding(self, f: FundingFlow) -> FundingFlow:
+        self._require_source(f.sources, "FundingFlow")
+        self.flows[f.id] = f
+        return f
+
     @staticmethod
     def _require_source(sources: list[Source], what: str) -> None:
         if not sources:
@@ -291,6 +359,44 @@ class RecordStore:
             if a.promise_id == promise_id:
                 return a
         return None
+
+    def funding_for(self, official_id: str) -> list[FundingFlow]:
+        return [f for f in self.flows.values()
+                if f.official_id == official_id]
+
+    def funding_context(self, official_id: str) -> dict:
+        """Follow the money: who funds this official, any foreign principal
+        behind the donor, and which of the official's recorded votes touch the
+        donor's interest areas. The vote linkage is CORRELATION, labelled as
+        such and shipped with its receipts — never an assertion of causation."""
+        official = self.officials.get(official_id)
+        if not official:
+            return {}
+        official_votes = self.votes_for(official_id)
+        rows = []
+        total = 0.0
+        for f in self.funding_for(official_id):
+            total += f.amount_usd
+            donor = self.donors.get(f.donor_id)
+            related = []
+            for v in official_votes:
+                bill = self.bills.get(v.bill_id)
+                if bill and set(bill.subjects) & set(f.subjects):
+                    related.append({"vote": v.to_public_dict(),
+                                    "bill": bill.to_public_dict()})
+            rows.append({
+                "donor": donor.to_public_dict() if donor else None,
+                "amount_usd": f.amount_usd, "cycle": f.cycle,
+                "subjects": f.subjects, "sources": _src_dicts(f.sources),
+                "correlated_votes": related,   # CORRELATION — see disclaimer
+            })
+        return {
+            "official": official.to_public_dict(),
+            "total_usd": round(total, 2),
+            "disclaimer": FUNDING_DISCLAIMER,
+            "relationship": "correlation",
+            "flows": sorted(rows, key=lambda r: r["amount_usd"], reverse=True),
+        }
 
     def scorecard(self, official_id: str) -> dict:
         """The headline view: an official's promises, each next to the recorded
@@ -326,7 +432,8 @@ def assert_charter_safe() -> None:
     """Fail loudly if any RECORD entity grows a field that profiles a private
     individual or models psychology/persuasion. Called by the test-suite and
     intended for CI — the charter's gate #1/#3, enforced in code."""
-    for entity in (Official, Bill, Vote, Statement, Promise, PromiseAssessment):
+    for entity in (Official, Bill, Vote, Statement, Promise, PromiseAssessment,
+                   Donor, FundingFlow):
         for f in fields(entity):
             low = f.name.lower()
             for token in FORBIDDEN_FIELD_TOKENS:
