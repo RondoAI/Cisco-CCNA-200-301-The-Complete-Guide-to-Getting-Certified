@@ -36,7 +36,12 @@ for striking.
 - **[DOMAINS.md](DOMAINS.md)** — the intelligence layers and their open sources.
 - **[DECISIONS.md](DECISIONS.md)** — the decision log: what's settled, what's open.
 - **[docs/FOUNDATION.md](docs/FOUNDATION.md)** — data-source catalog, agent swarm, and the infra/storage setup.
-- **[docs/specs/](docs/specs/)** — the interface reference library: teardowns of command-UI videos (legibility we adopt; targeting we reject), condensed into component specs.
+- **[docs/specs/](docs/specs/)** — the spec library, **all code-form** (typed
+  `.ts` notes so the implementing model gets exact structure, not prose to
+  reinterpret): `index.ts` (manifest + working rule), `console_prisma.spec.ts`
+  (video teardown), `political_geography.spec.ts` (election-map layout),
+  `components.ts` (condensed component contracts). Targeting functions rejected
+  in-code; legibility adopted.
 - **[docs/ENGINE.md](docs/ENGINE.md)** — the running verification engine's readme.
 
 ## What runs today (seed, not the system)
