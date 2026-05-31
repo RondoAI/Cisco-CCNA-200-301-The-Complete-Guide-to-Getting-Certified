@@ -8,15 +8,26 @@ enriching over time.* We do **not** build the whole thing from one clip.
 
 ## How it works
 
-1. **Each video → one teardown.** `UI-TEARDOWN-NNN-<name>.md`: scene inventory,
-   every panel, the map mechanics in depth, how such systems are really built,
-   and realistic data volumes. Each element tagged **adopt / adapt / reject**.
-2. **Durable patterns condense into `components.ts`** — a "note of code" (types +
-   annotations, no implementation): each component's data contract, refresh
-   cadence, source, and charter status. This is the part that gets *denser* as
-   more videos come in.
-3. **Later, deliberate implementation.** When a pattern is well-specified and
-   decided, it graduates into the real frontend (`web/`) — never on the spot.
+We are not shipping product here — we are **accumulating layout + knowledge
+notes** that make the eventual build fast and rich. Two note types:
+
+- **`UI-TEARDOWN-NNN`** — a reference *video* taken apart: scene inventory, every
+  panel, the map mechanics, how such systems are really built, realistic data
+  volumes; each element tagged **adopt / adapt / reject**.
+- **`LAYOUT-NNN`** — a *feature/data* layout + knowledge note: the schema layout
+  (code-shaped), map/UI design, confirmed data sources, the API surface as a
+  documented contract, realistic scale, and findings.
+
+Then:
+
+1. **Durable patterns condense into `components.ts`** — a "note of code" (types +
+   annotations, no implementation): each component's data contract, cadence,
+   source, charter status. This gets *denser* as more notes come in.
+2. **Later, deliberate implementation.** When a pattern is well-specified and
+   decided, it graduates into the real backend/frontend — never on the spot.
+
+> Where a reference *prototype* exists (e.g. `glasshouse/elections.py`), it is
+> proof the layout is sound and the data is real — not the finished product.
 
 ## The charter line (non-negotiable)
 
@@ -31,6 +42,7 @@ trigger. (`../../CHARTER.md`, `../../DECISIONS.md` D2, `../../DOMAINS.md`.)
 | ID | Source | What it is | Status |
 |----|--------|-----------|--------|
 | [UI-TEARDOWN-001](UI-TEARDOWN-001-prisma.md) | "PRISMA / Operation Steel Horizon" (broadcast b-roll) | Dense dark C2 console: dual coordinated maps, track tables, signal charts, streaming log, analytics. Strike-planning functions **rejected**; map shell + chrome **adapted**. | analyzed |
+| [LAYOUT-001](LAYOUT-001-political-geography.md) | Political-geography brief | The zoomable election map: nation→state→county schema, map/zoom design, confirmed data sources, API contract, and real 2020/2024 findings. Reference prototype: `elections.py`. | spec'd |
 
 > Source frames are **not committed** (third-party broadcast footage). Teardowns
 > describe them; send more videos and they become the next entries.
