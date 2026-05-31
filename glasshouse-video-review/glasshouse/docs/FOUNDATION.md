@@ -24,6 +24,15 @@ anything publishes.
 - State/local: **Open States** (legislatures), **LegiScan**, municipal open-data
   portals — for the governor and **mayor**-level tracking.
 
+**Elections & political geography (the map)**
+- **County-level presidential results** — keyless `tonmcg/US_County_Level_Election_Results_08-24`
+  (official county returns, 2008–2024). *Wired:* `elections.py` → winner, margin,
+  lean, rollups, flips. (Primary source: state election offices / MIT MEDSL.)
+- **County / state boundaries** — Census TIGER; keyless county GeoJSON
+  (`plotly/datasets` `geojson-counties-fips`, 3,221 features by FIPS) to render
+  the choropleth. *Verified reachable.*
+- Governors & state officials — Wikidata + Open States (next).
+
 **World events & the ground (THE WATCH)**
 - **GDELT 2.0**, **ACLED**, **UCDP** — conflict/event feeds (wired).
 - Wire/RSS + curated channels — reliability-tiered, verified.

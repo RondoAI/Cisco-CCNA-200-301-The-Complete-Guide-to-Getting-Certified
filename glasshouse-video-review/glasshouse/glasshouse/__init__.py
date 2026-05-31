@@ -4,6 +4,8 @@ Track events, not people. Verify, don't surveil. Show the receipts.
 """
 
 from .congress import CongressAdapter  # noqa: F401
+from .elections import (CountyResult, CountyResultsAdapter,  # noqa: F401
+                        ElectionStore)
 from .models import Confidence, Event, Source, SourceKind  # noqa: F401
 from .record import (Bill, Donor, DonorType, Fulfillment,  # noqa: F401
                      FundingFlow, Official, Promise, PromiseAssessment,
@@ -18,5 +20,7 @@ __all__ = [
     "Official", "Bill", "Vote", "Statement", "Promise", "PromiseAssessment",
     "Fulfillment", "Donor", "DonorType", "FundingFlow", "RecordStore",
     "assess_promise", "assert_charter_safe", "CongressAdapter",
+    # Elections (political geography)
+    "CountyResult", "CountyResultsAdapter", "ElectionStore",
 ]
 __version__ = "0.2.0"

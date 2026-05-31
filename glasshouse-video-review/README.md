@@ -48,6 +48,13 @@ The branch grew into early build work on the project itself:
   perspective beside the press. `/api/record/officials/{id}/statements`. Scope is
   pinned in `DECISIONS.md` **D7**: public figures + public statements only —
   archive/translate, never surveil or psychoanalyze.
+- **The political map (elections)** — `glasshouse/glasshouse/elections.py`: real
+  county-level presidential results (every county, 2020 + 2024) with per-county
+  winner / signed margin / lean, state + national rollups, closest races, and
+  cross-cycle **flips** — FIPS-keyed to the county GeoJSON for a zoomable
+  choropleth. Endpoints `/api/elections/map|national|state/{s}|county/{fips}|flips`.
+  Verified live: 2024 R+1.48% (77.3M/75.0M), 86 D→R county flips, closest county
+  Talbot MD at 0.03%. Full suite: **36 tests passing**.
 - **Real U.S. roster** — `glasshouse/glasshouse/congress.py`: every current
   Senator and Representative (all states), party, district, term end and
   next-election year, from the keyless `unitedstates/congress-legislators`

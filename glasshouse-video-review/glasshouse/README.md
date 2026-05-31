@@ -47,8 +47,8 @@ built first and most carefully:
 ```bash
 pip install -r requirements.txt
 python run.py                    # dashboard + API at http://127.0.0.1:8000
-GLASSHOUSE_LIVE=1 python run.py  # also pulls the real ~535-member U.S. roster
-pytest -q                        # 27 tests: verification, privacy, learning, enrichment, the record
+GLASSHOUSE_LIVE=1 python run.py  # pulls the real U.S. roster + county election map
+pytest -q                        # 36 tests: verification, privacy, learning, enrichment, the record, elections
 ```
 
 - `glasshouse/models.py` — events, not people; provenance baked in
@@ -65,6 +65,12 @@ pytest -q                        # 27 tests: verification, privacy, learning, en
   from the keyless `unitedstates/congress-legislators` dataset.
   `/api/record/summary` lays out the whole country; `/api/record/officials?state=CA`
   filters it. (Live with `GLASSHOUSE_LIVE=1`; offline sample otherwise.)
+- `glasshouse/elections.py` — **the political map:** real county-level
+  presidential results (every county, 2020 + 2024), with per-county winner,
+  signed margin, lean bucket, state/national rollups, closest races and
+  cross-cycle **flips** — FIPS-keyed to join the county GeoJSON for a zoomable
+  choropleth. `/api/elections/map`, `/national`, `/state/{s}`, `/county/{fips}`,
+  `/flips`. (Keyless `tonmcg` dataset; live with `GLASSHOUSE_LIVE=1`.)
 - `web/index.html` — the world-intelligence console (map + signals feed + the receipt + timeline)
 - `web/engine-dashboard.html` — the engine's API-connected view
 

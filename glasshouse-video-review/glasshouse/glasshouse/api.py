@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 
 from .congress import CongressAdapter
+from .elections import CountyResultsAdapter, ElectionStore
 from .ingest import CitizenMediaAdapter, GDELTAdapter
 from .record import RecordStore
 from .record_seed import seed_record
@@ -20,6 +21,7 @@ from .store import EventStore
 
 store = EventStore()
 record = RecordStore()
+elections = ElectionStore()
 
 
 def bootstrap() -> None:
@@ -36,6 +38,10 @@ def bootstrap() -> None:
     seed_record(record)
     for official in CongressAdapter().fetch():
         record.add_official(official)
+    # The political map: real county-level presidential results (2020 + 2024 by
+    # default) — every county, with margins, lean and cross-cycle flips.
+    for result in CountyResultsAdapter().fetch():
+        elections.add(result)
 
 
 app = FastAPI(title="Glasshouse", version="0.1.0",
@@ -139,3 +145,54 @@ def official_funding(official_id: str):
     if not ctx:
         raise HTTPException(404, "official not found")
     return ctx
+
+
+# --- The political map (elections) -------------------------------------------
+@app.get("/api/elections/years")
+def election_years():
+    return {"years": elections.years()}
+
+
+@app.get("/api/elections/map")
+def election_map(year: int = 2024):
+    """Choropleth-ready county data keyed by FIPS (join to county GeoJSON) — the
+    zoomable election map: winner, signed margin and lean per county."""
+    data = elections.map_data(year)
+    if not data:
+        raise HTTPException(404, f"no results loaded for {year}")
+    return {"year": year, "count": len(data), "counties": data}
+
+
+@app.get("/api/elections/national")
+def election_national(year: int = 2024):
+    return {"totals": elections.national_totals(year),
+            "closest_counties": elections.closest_counties(year)}
+
+
+@app.get("/api/elections/state/{state}")
+def election_state(state: str, year: int = 2024):
+    roll = elections.state_rollup(year)
+    key = next((k for k in roll if k.lower() == state.lower()), None)
+    if not key:
+        raise HTTPException(404, "state not found for that year")
+    counties = sorted((r.to_public_dict() for r in elections.by_year(year)
+                       if r.state.lower() == state.lower()),
+                      key=lambda r: r["margin_pct"])
+    return {"state": key, "year": year, "rollup": roll[key], "counties": counties}
+
+
+@app.get("/api/elections/county/{fips}")
+def election_county(fips: str):
+    """One county across cycles — how it has voted and trended over time."""
+    hist = elections.county_history(fips.zfill(5))
+    if not hist:
+        raise HTTPException(404, "county not found")
+    return {"fips": fips.zfill(5), "county": hist[-1].county, "state": hist[-1].state,
+            "history": [r.to_public_dict() for r in hist]}
+
+
+@app.get("/api/elections/flips")
+def election_flips(from_year: int = 2020, to_year: int = 2024):
+    """Counties that changed party between cycles — where the map moved."""
+    return {"from": from_year, "to": to_year,
+            "flips": elections.flips(from_year, to_year)}
