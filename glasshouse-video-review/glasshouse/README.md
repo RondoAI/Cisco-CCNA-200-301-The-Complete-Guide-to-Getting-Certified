@@ -35,6 +35,8 @@ for striking.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the spine + data model + roadmap.
 - **[DOMAINS.md](DOMAINS.md)** — the intelligence layers and their open sources.
 - **[DECISIONS.md](DECISIONS.md)** — the decision log: what's settled, what's open.
+- **[docs/FOUNDATION.md](docs/FOUNDATION.md)** — data-source catalog, agent swarm, and the infra/storage setup.
+- **[docs/specs/](docs/specs/)** — the interface reference library: teardowns of command-UI videos (legibility we adopt; targeting we reject), condensed into component specs.
 - **[docs/ENGINE.md](docs/ENGINE.md)** — the running verification engine's readme.
 
 ## What runs today (seed, not the system)
