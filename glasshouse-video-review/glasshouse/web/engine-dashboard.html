@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Glasshouse — event intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spectral:wght@300;400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --paper:#f4efe4; --paper-2:#ece5d6; --ink:#1c1a15; --ink-soft:#5b5547;
+    --line:#d8cfba; --accent:#9a3b1f;        /* sealing-wax red-ochre */
+    --confirmed:#2f5d3a; --corroborated:#b9802b; --emerging:#3a6079;
+    --unverified:#8a8170; --disputed:#a32b22;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Spectral",Georgia,serif;
+    /* faint paper grain */
+    background-image:radial-gradient(var(--paper-2) 0.5px,transparent 0.5px);
+    background-size:7px 7px;
+  }
+  .wrap{display:grid;grid-template-columns:380px 1fr;grid-template-rows:auto 1fr;
+    height:100vh;grid-template-areas:"head head" "feed map"}
+  header{grid-area:head;border-bottom:1.5px solid var(--ink);
+    padding:18px 26px;display:flex;align-items:baseline;gap:20px;
+    background:var(--paper)}
+  .mark{font-family:"Fraunces",serif;font-weight:900;font-size:30px;
+    letter-spacing:-.5px;line-height:.9}
+  .mark span{color:var(--accent)}
+  .thesis{font-family:"IBM Plex Mono",monospace;font-size:11px;
+    text-transform:uppercase;letter-spacing:2px;color:var(--ink-soft)}
+  .thesis b{color:var(--ink)}
+  .meta{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:11px;
+    color:var(--ink-soft);text-align:right}
+
+  .feed{grid-area:feed;overflow-y:auto;border-right:1.5px solid var(--ink);
+    padding:14px}
+  .feed h2{font-family:"IBM Plex Mono",monospace;font-size:11px;
+    text-transform:uppercase;letter-spacing:2px;color:var(--ink-soft);
+    padding:6px 8px 12px}
+
+  .card{border:1px solid var(--line);background:rgba(255,255,255,.35);
+    padding:13px 15px;margin-bottom:11px;cursor:pointer;position:relative;
+    transition:transform .15s ease,border-color .15s ease,background .15s ease;
+    opacity:0;animation:rise .5s ease forwards}
+  .card:hover{transform:translateX(3px);border-color:var(--ink);
+    background:rgba(255,255,255,.7)}
+  .card.sel{border-color:var(--accent);border-left:3px solid var(--accent)}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+  .card .hl{font-family:"Fraunces",serif;font-weight:600;font-size:17px;
+    line-height:1.2;margin-bottom:8px}
+  .row{display:flex;align-items:center;gap:10px;font-family:"IBM Plex Mono",monospace;
+    font-size:11px;color:var(--ink-soft)}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:500;
+    text-transform:uppercase;letter-spacing:1px;padding:3px 8px;border-radius:2px;
+    color:#fff}
+  .region{margin-left:auto;font-style:italic}
+
+  .map-pane{grid-area:map;position:relative}
+  #map{position:absolute;inset:0;background:var(--paper-2)}
+  .leaflet-container{background:#e7dfcd;font-family:"IBM Plex Mono",monospace}
+  .dot{border-radius:50%;border:2px solid var(--paper);
+    box-shadow:0 0 0 1px rgba(0,0,0,.3)}
+
+  /* provenance / receipts drawer */
+  .receipts{position:absolute;top:0;right:0;width:420px;max-width:88%;height:100%;
+    background:var(--paper);border-left:1.5px solid var(--ink);padding:24px;
+    overflow-y:auto;transform:translateX(102%);transition:transform .32s cubic-bezier(.2,.7,.2,1);
+    box-shadow:-12px 0 30px rgba(28,26,21,.12);z-index:1000}
+  .receipts.open{transform:translateX(0)}
+  .receipts .close{position:absolute;top:16px;right:18px;background:none;border:none;
+    font-size:22px;cursor:pointer;color:var(--ink-soft);font-family:serif}
+  .receipts .kicker{font-family:"IBM Plex Mono",monospace;font-size:10px;
+    letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+  .receipts h3{font-family:"Fraunces",serif;font-weight:700;font-size:24px;
+    line-height:1.1;margin:6px 0 16px}
+  .stat{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);
+    padding:8px 0;font-family:"IBM Plex Mono",monospace;font-size:12px}
+  .stat b{font-weight:500}
+  .sec{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--ink-soft);margin:22px 0 10px}
+  .audit{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.5;
+    border-left:2px solid var(--line);padding:4px 0 4px 12px;margin-bottom:8px}
+  .audit .pass{color:var(--confirmed)} .audit .fail{color:var(--disputed)}
+  .audit .d{color:var(--ink-soft)}
+  .srcitem{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:6px 0;
+    border-bottom:1px dotted var(--line);display:flex;gap:8px;align-items:center}
+  .srcitem .k{color:#fff;padding:1px 6px;border-radius:2px;font-size:9px;
+    text-transform:uppercase;letter-spacing:1px;background:var(--ink-soft)}
+  .note{font-size:12px;font-style:italic;color:var(--ink-soft);
+    border-top:1px solid var(--line);margin-top:22px;padding-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="mark">Glass<span>house</span></div>
+    </div>
+    <div class="thesis">Track <b>events</b>, not people<br>Verify &middot; don't surveil &middot; show the receipts</div>
+    <div class="meta" id="meta">loading…</div>
+  </header>
+  <section class="feed">
+    <h2>Incident feed</h2>
+    <div id="cards"></div>
+  </section>
+  <div class="map-pane">
+    <div id="map"></div>
+    <aside class="receipts" id="receipts">
+      <button class="close" onclick="closeReceipts()">&times;</button>
+      <div id="receipts-body"></div>
+    </aside>
+  </div>
+</div>
+<script>
+const COLOR = {confirmed:'#2f5d3a',corroborated:'#b9802b',emerging:'#3a6079',
+  unverified:'#8a8170',disputed:'#a32b22'};
+const map = L.map('map',{zoomControl:true,attributionControl:false})
+  .setView([22,40],3.2);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+  {maxZoom:18}).addTo(map);
+let events=[], markers={}, selected=null;
+
+function dotIcon(c,disputed){
+  return L.divIcon({className:'',html:
+    `<div class="dot" style="width:16px;height:16px;background:${c};
+      ${disputed?'border-style:dashed;':''}"></div>`,iconSize:[16,16]});
+}
+function chip(conf){
+  return `<span class="chip" style="background:${COLOR[conf]}">${conf}</span>`;
+}
+
+async function load(){
+  const r = await fetch('/api/events'); const d = await r.json();
+  events = d.events;
+  document.getElementById('meta').innerHTML =
+    `${d.count} incidents tracked<br>${events.filter(e=>e.confidence==='disputed').length} disputed / flagged`;
+  const cards = document.getElementById('cards'); cards.innerHTML='';
+  events.forEach((e,i)=>{
+    const c = COLOR[e.confidence];
+    const card = document.createElement('div');
+    card.className='card'; card.style.animationDelay=(i*60)+'ms';
+    card.onclick=()=>select(e.id);
+    card.id='card-'+e.id;
+    card.innerHTML =
+      `<div class="hl">${e.headline}</div>
+       <div class="row">${chip(e.confidence)}
+         <span>${e.independent_sources} indep · ${e.source_count} src</span>
+         <span class="region">${e.region||'—'}</span></div>`;
+    cards.appendChild(card);
+    const m = L.marker([e.lat,e.lon],{icon:dotIcon(c,e.confidence==='disputed')})
+      .addTo(map).on('click',()=>select(e.id));
+    markers[e.id]=m;
+  });
+}
+
+function select(id){
+  const e = events.find(x=>x.id===id); if(!e) return;
+  if(selected) document.getElementById('card-'+selected)?.classList.remove('sel');
+  selected=id; document.getElementById('card-'+id)?.classList.add('sel');
+  map.flyTo([e.lat,e.lon],6,{duration:.6});
+  const audit = e.audit_trail.map(a=>
+    `<div class="audit"><span class="${a.passed?'pass':'fail'}">
+       ${a.passed?'✓':'✕'} ${a.check}</span> <span class="d">(${a.score_delta>=0?'+':''}${a.score_delta})</span>
+       <br><span class="d">${a.detail}</span></div>`).join('');
+  const srcs = e.sources.map(s=>
+    `<div class="srcitem"><span class="k">${s.kind}</span>
+       <span>${s.domain}</span></div>`).join('');
+  document.getElementById('receipts-body').innerHTML =
+    `<div class="kicker">incident dossier</div>
+     <h3>${e.headline}</h3>
+     <div class="stat"><span>Confidence</span><b>${chip(e.confidence)}</b></div>
+     <div class="stat"><span>Score</span><b>${e.score}</b></div>
+     <div class="stat"><span>Independent sources</span><b>${e.independent_sources}</b></div>
+     <div class="stat"><span>Region</span><b>${e.region||'—'}</b></div>
+     <div class="sec">Sources &mdash; outlets, never uploaders</div>${srcs}
+     <div class="sec">Verification audit &mdash; the receipts</div>${audit}
+     <div class="note">No field here can identify who filmed or reported this.
+     Citizen-media identity is stripped at intake; only what verifies the
+     footage is kept. That is the product, not a setting.</div>`;
+  document.getElementById('receipts').classList.add('open');
+}
+function closeReceipts(){
+  document.getElementById('receipts').classList.remove('open');
+  if(selected) document.getElementById('card-'+selected)?.classList.remove('sel');
+  selected=null;
+}
+load();
+</script>
+</body>
+</html>
