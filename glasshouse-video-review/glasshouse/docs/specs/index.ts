@@ -6,7 +6,7 @@
  * lives in code; this manifest indexes them and states the working rule.
  */
 
-export type NoteKind = "teardown" | "layout" | "components";
+export type NoteKind = "teardown" | "layout" | "components" | "principles";
 export type NoteStatus = "analyzed" | "spec'd" | "condensing";
 
 export interface SpecNote {
@@ -28,6 +28,17 @@ export const WORKING_RULE = {
 } as const;
 
 export const LIBRARY: SpecNote[] = [
+  {
+    id: "PRINCIPLES-001",
+    kind: "principles",
+    file: "./principles_sutton.spec.ts",
+    source: "Rich Sutton — 'AI creativity & discovery' / Bitter Lesson / Era of Experience",
+    summary: "the Sutton frame as binding principles: discover-don't-store, bitter lesson, " +
+      "continual experience, verification-as-ground-truth reward, search+learning, " +
+      "scaffolding-to-replace, and the 'glass-box bitter lesson' divergence",
+    status: "spec'd",
+    charterNote: "scale learning BUT keep every judgment auditable (D3/D5)",
+  },
   {
     id: "UI-TEARDOWN-001",
     kind: "teardown",
